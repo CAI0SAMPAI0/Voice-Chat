@@ -825,6 +825,16 @@ def show_voice() -> None:
 
     conv_id = get_or_create_conv(username)
 
+    # Carrega histórico do banco se _vm_history estiver vazio (ex: ao abrir conversa do histórico)
+    if not st.session_state.get("_vm_history") and conv_id:
+        msgs_db = load_conversation(username, conv_id)
+        if msgs_db:
+            st.session_state["_vm_history"] = [
+                {"role": m["role"], "content": m["content"]}
+                for m in msgs_db
+                if m.get("content")
+            ]
+
     # Processa áudio recebido
     audio_val = st.audio_input(
         " ", key=f"voice_input_{st.session_state.audio_key}",
@@ -854,6 +864,10 @@ def show_voice() -> None:
     has_anim  = bool(av_base and av_closed and av_mid and av_open)
 
     is_speaking = bool(reply and tts_b64)
+
+    # Passa o histórico completo para o JS renderizar todas as bolhas
+    history    = st.session_state.get("_vm_history", [])
+    history_js = json.dumps(history)
 
     tts_js    = json.dumps(tts_b64)
     reply_js  = json.dumps(reply)
@@ -1046,6 +1060,7 @@ html,body{{
 var TTS_B64    = {tts_js};
 var REPLY      = {reply_js};
 var USER_SAID  = {us_js};
+var HISTORY    = {history_js};
 var VM_ERROR   = {err_js};
 var SPEECH_LANG= {sl_js};
 var TAP_SPEAK  = {tap_speak};
@@ -1167,15 +1182,11 @@ if(VM_ERROR){{
     transBox.classList.remove('active');
 }} else {{
     errBox.style.display='none';
-    if(USER_SAID){{
-        addBubble('user', USER_SAID);
-        transBox.textContent = USER_SAID;
-        transBox.classList.add('active');
-    }}
-    if(REPLY){{
-        addBubble('bot', REPLY);
-        transBox.textContent = REPLY;
-        transBox.classList.add('active');
+    // Renderiza todo o histórico acumulado
+    if(HISTORY && HISTORY.length > 0){{
+        HISTORY.forEach(function(msg){{
+            addBubble(msg.role === 'user' ? 'user' : 'bot', msg.content);
+        }});
     }}
     if(TTS_B64){{
         setTimeout(function(){{ playTTS(TTS_B64); }}, 400);
