@@ -1510,7 +1510,6 @@ def show_dashboard() -> None:
 # =============================================================================
 def main():
     if not st.session_state.logged_in:
-        # Tenta auto-login via query param ?s=TOKEN
         _s = st.query_params.get("s", "")
         if _s and len(_s) > 10:
             _ud = validate_session(_s)
@@ -1530,11 +1529,10 @@ def main():
         show_login()
         return
 
-    # Mantém token no query param a cada render — é o método mais confiável no Streamlit Cloud
+    # Salva token APENAS no localStorage/cookie — sem mexer no query param
     token = st.session_state.get("_session_token", "")
     if token:
-        st.query_params["s"] = token
-        js_save_session(token)  # salva também no localStorage/cookie como backup
+        js_save_session(token)
 
     show_sidebar()
     page = st.session_state.page
@@ -1550,3 +1548,5 @@ def main():
     else:
         st.session_state.page = "voice"
         st.rerun()
+
+main()
