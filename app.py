@@ -1254,7 +1254,7 @@ try{{
 
 }})();
 </script>
-</body></html>""", height=260, scrolling=False)
+</body></html>""", height=950, scrolling=False)
 
 # =============================================================================
 # TELA DE CONFIGURACOES
