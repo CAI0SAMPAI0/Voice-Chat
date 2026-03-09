@@ -885,14 +885,13 @@ html,body{{
 }}
 .app{{
     display:flex;flex-direction:column;align-items:center;
-    justify-content:space-between;
-    min-height:100vh;padding:24px 20px 32px;
-    gap:16px;
+    height:100vh;padding:16px 20px 0;
+    gap:10px;overflow:hidden;
 }}
 /* ---- Avatar ---- */
 .avatar-wrap{{
-    position:relative;width:160px;height:160px;flex-shrink:0;
-    margin-top:10px;
+    position:relative;width:120px;height:120px;flex-shrink:0;
+    margin-top:4px;
 }}
 .avatar-ring{{
     position:absolute;inset:-8px;border-radius:50%;
@@ -907,33 +906,36 @@ html,body{{
 @keyframes ring-pulse{{0%,100%{{opacity:.4;transform:scale(1);}}50%{{opacity:.8;transform:scale(1.03);}}}}
 @keyframes ring-glow{{0%{{box-shadow:0 0 0 0 rgba(240,165,0,.5);}}70%{{box-shadow:0 0 0 14px rgba(240,165,0,0);}}100%{{box-shadow:0 0 0 0 rgba(240,165,0,0);}}}}
 .avatar-img{{
-    width:160px;height:160px;border-radius:50%;
+    width:120px;height:120px;border-radius:50%;
     object-fit:cover;object-position:top;
     border:3px solid #f0a500;
     box-shadow:0 0 32px rgba(240,165,0,.25);
 }}
 .avatar-emoji{{
-    width:160px;height:160px;border-radius:50%;
+    width:120px;height:120px;border-radius:50%;
     background:linear-gradient(135deg,#1a2535,#0f1824);
     border:3px solid #f0a500;
     display:flex;align-items:center;justify-content:center;
-    font-size:72px;
+    font-size:54px;
     box-shadow:0 0 32px rgba(240,165,0,.2);
 }}
-.prof-name{{font-size:1.1rem;font-weight:700;color:#e6edf3;margin-top:8px;}}
-.status{{font-size:.7rem;color:#f0a500;margin-top:2px;}}
+.prof-name{{font-size:1rem;font-weight:700;color:#e6edf3;margin-top:6px;}}
+.status{{font-size:.68rem;color:#f0a500;margin-top:1px;}}
 
 /* ---- Historico de bolhas ---- */
 .history-wrap{{
-    width:100%;max-width:520px;max-height:28vh;
+    width:100%;max-width:560px;
+    flex:1;min-height:0;
     overflow-y:auto;display:flex;flex-direction:column;gap:8px;
-    padding:4px 0;
+    padding:8px 4px;
+    scrollbar-width:thin;scrollbar-color:#1a2535 transparent;
 }}
-.history-wrap::-webkit-scrollbar{{width:3px;}}
-.history-wrap::-webkit-scrollbar-thumb{{background:#1a2535;border-radius:3px;}}
+.history-wrap::-webkit-scrollbar{{width:4px;}}
+.history-wrap::-webkit-scrollbar-thumb{{background:#1a2535;border-radius:4px;}}
+.history-wrap::-webkit-scrollbar-track{{background:transparent;}}
 .bubble{{
-    max-width:80%;padding:9px 14px;border-radius:18px;
-    font-size:.82rem;line-height:1.55;word-break:break-word;
+    max-width:82%;padding:10px 15px;border-radius:18px;
+    font-size:.84rem;line-height:1.55;word-break:break-word;
 }}
 .bubble.user{{
     align-self:flex-end;
@@ -949,19 +951,19 @@ html,body{{
 .bubble-label{{font-size:.6rem;color:#4a5a6a;margin:2px 4px;}}
 .bubble-label.right{{text-align:right;}}
 
-/* ---- Transcricao atual ---- */
-.transcript-box{{
-    width:100%;max-width:520px;min-height:44px;
-    background:#0f1824;border:1px solid #1a2535;
-    border-radius:14px;padding:10px 16px;
-    font-size:.82rem;color:#8b949e;
-    font-style:italic;text-align:center;
-    transition:all .3s;
-}}
-.transcript-box.active{{color:#e6edf3;font-style:normal;border-color:#252d3d;}}
+/* ---- Transcricao atual — removida, integrada nas bolhas ---- */
+.transcript-box{{display:none;}}
 
-/* ---- Botao mic ---- */
-.mic-area{{display:flex;flex-direction:column;align-items:center;gap:10px;}}
+/* ---- Mic fixo no rodapé ---- */
+.mic-footer{{
+    flex-shrink:0;
+    width:100%;max-width:560px;
+    display:flex;flex-direction:column;align-items:center;
+    gap:8px;
+    padding:12px 0 20px;
+    background:linear-gradient(to top,#060a10 70%,transparent);
+    position:sticky;bottom:0;
+}}
 .mic-btn{{
     width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;
     background:linear-gradient(135deg,#1a2535,#131c2a);
@@ -994,7 +996,8 @@ html,body{{
 .error-box{{
     background:rgba(224,92,42,.1);border:1px solid rgba(224,92,42,.3);
     border-radius:10px;padding:8px 14px;font-size:.78rem;color:#e05c2a;
-    max-width:520px;width:100%;text-align:center;
+    max-width:560px;width:100%;text-align:center;
+    flex-shrink:0;
 }}
 </style>
 </head><body>
@@ -1007,7 +1010,7 @@ html,body{{
             <img id="avImg" class="avatar-img"
                  src="" alt="{PROF_NAME}"
                  onerror="this.style.display='none';document.getElementById('avEmoji').style.display='flex';"
-                 style="display:none;">
+                 style="display:none;width:120px;height:120px;">
             <div id="avEmoji" class="avatar-emoji">&#129489;&#8205;&#127979;</div>
         </div>
         <div class="prof-name">{PROF_NAME}</div>
@@ -1017,16 +1020,14 @@ html,body{{
     <!-- Historico de bolhas -->
     <div class="history-wrap" id="historyWrap"></div>
 
-    <!-- Transcricao atual -->
-    <div class="transcript-box" id="transcriptBox">
-        Toque no microfone para falar
-    </div>
-
     <!-- Erro -->
     <div class="error-box" id="errBox" style="display:none;"></div>
 
-    <!-- Botao mic -->
-    <div class="mic-area">
+    <!-- Transcricao (oculta — mantida por compatibilidade JS) -->
+    <div class="transcript-box" id="transcriptBox" style="display:none;"></div>
+
+    <!-- Mic fixo no rodape -->
+    <div class="mic-footer">
         <button class="mic-btn" id="micBtn" title="Gravar">
             <i class="fa-solid fa-microphone"></i>
         </button>
@@ -1242,7 +1243,7 @@ try{{
 
 }})();
 </script>
-</body></html>""", height=620, scrolling=False)
+</body></html>""", height=820, scrolling=False)
 
 # =============================================================================
 # TELA DE CONFIGURACOES
