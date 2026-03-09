@@ -1529,10 +1529,12 @@ def main():
         show_login()
         return
 
-    # Salva token APENAS no localStorage/cookie — sem mexer no query param
     token = st.session_state.get("_session_token", "")
-    if token:
-        js_save_session(token)
+    # Só seta o query param se ainda não estiver lá — evita loop
+    if token and st.query_params.get("s") != token:
+        st.query_params["s"] = token
+
+    js_save_session(token)  # backup no localStorage/cookie
 
     show_sidebar()
     page = st.session_state.page
