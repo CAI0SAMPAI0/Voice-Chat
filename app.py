@@ -318,7 +318,7 @@ if not st.session_state.logged_in:
 # =============================================================================
 # HELPERS
 # =============================================================================
-@st.cache_data(show_spinner=False)
+#@st.cache_data(show_spinner=False)
 def get_photo_b64() -> str | None:
     """Lê a foto da professora e devolve como data-URI base64."""
     p = Path(PHOTO_PATH)
@@ -330,7 +330,7 @@ def get_photo_b64() -> str | None:
 
 PHOTO_B64 = get_photo_b64()
 
-@st.cache_data(show_spinner=False)
+#@st.cache_data(show_spinner=False)
 def get_tati_mini_b64() -> str:
     """Lê a foto da Tati uma única vez e reutiliza em todo o app."""
     for _p in [Path("assets/tati.png"), Path("assets/tati.jpg"),
@@ -343,7 +343,7 @@ def get_tati_mini_b64() -> str:
     return get_photo_b64() or ""
 
 # ── Cache dos 4 frames do avatar animado do modo voz ─────────────────────────
-@st.cache_data(show_spinner=False)
+#@st.cache_data(show_spinner=False)
 def get_avatar_frames() -> dict:
     """Carrega os frames do avatar animado uma única vez."""
     _base = Path(__file__).parent
