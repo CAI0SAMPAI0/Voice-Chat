@@ -903,7 +903,7 @@ html,body{{
 .history-wrap::-webkit-scrollbar-track{{background:transparent;}}
 .bubble{{
     max-width:82%;padding:10px 15px;border-radius:18px;
-    font-size:.84rem;line-height:1.55;word-break:break-word;
+    font-size:.84rem;line-height:1.55;word-break:normal;
 }}
 .bubble.user{{
     align-self:flex-end;
