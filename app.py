@@ -259,63 +259,6 @@ for k, v in _DEFAULTS.items():
         st.session_state[k] = v
 
 # =============================================================================
-# AUTO-LOGIN (cookie HTTP header)
-# =============================================================================
-'''def _try_autologin() -> bool:
-    if st.session_state.logged_in:
-        return True
-    try:
-        headers = st.context.headers
-        cookie_header = headers.get("Cookie", "") or headers.get("cookie", "")
-    except AttributeError:
-        return False
-    if not cookie_header:
-        return False
-    token = None
-    for part in cookie_header.split(";"):
-        part = part.strip()
-        if part.startswith("pav_session="):
-            import urllib.parse
-            token = urllib.parse.unquote(part.split("=", 1)[1].strip())
-            break
-    if not token or len(token) < 10:
-        return False
-    udata = validate_session(token)
-    if not udata:
-        return False
-    uname = udata.get("_resolved_username") or next(
-        (k for k, v in load_students().items() if v.get("password") == udata.get("password")), None
-    )
-    if not uname:
-        return False
-    st.session_state.logged_in         = True
-    st.session_state.user              = {"username": uname, **udata}
-    st.session_state.page              = "dashboard" if udata.get("role") == "professor" else "voice"
-    st.session_state.conv_id           = None
-    st.session_state["_session_token"] = token
-    return True
-
-_try_autologin()'''
-
-# query param fallback
-'''if not st.session_state.logged_in:
-    _s = st.query_params.get("s", "")
-    if _s and len(_s) > 10:
-        _ud = validate_session(_s)
-        if _ud:
-            _un = _ud.get("_resolved_username") or next(
-                (k for k, v in load_students().items() if v["password"] == _ud["password"]), None
-            )
-            if _un:
-                st.session_state.logged_in         = True
-                st.session_state.user              = {"username": _un, **_ud}
-                st.session_state.page              = "dashboard" if _ud["role"] == "professor" else "voice"
-                st.session_state.conv_id           = None
-                st.session_state["_session_token"] = _s
-        else:
-            st.query_params.pop("s", None)'''
-
-# =============================================================================
 # HELPERS
 # =============================================================================
 #@st.cache_data(show_spinner=False)
