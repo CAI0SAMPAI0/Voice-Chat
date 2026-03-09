@@ -328,7 +328,7 @@ def get_photo_b64() -> str | None:
         return f"data:image/{mime};base64,{base64.b64encode(p.read_bytes()).decode()}"
     return None
 
-PHOTO_B64 = get_photo_b64
+PHOTO_B64 = get_photo_b64()
 
 @st.cache_data(show_spinner=False)
 def get_tati_mini_b64() -> str:
