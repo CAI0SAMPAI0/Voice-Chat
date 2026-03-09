@@ -261,7 +261,7 @@ for k, v in _DEFAULTS.items():
 # =============================================================================
 # AUTO-LOGIN (cookie HTTP header)
 # =============================================================================
-def _try_autologin() -> bool:
+'''def _try_autologin() -> bool:
     if st.session_state.logged_in:
         return True
     try:
@@ -295,10 +295,10 @@ def _try_autologin() -> bool:
     st.session_state["_session_token"] = token
     return True
 
-_try_autologin()
+_try_autologin()'''
 
 # query param fallback
-if not st.session_state.logged_in:
+'''if not st.session_state.logged_in:
     _s = st.query_params.get("s", "")
     if _s and len(_s) > 10:
         _ud = validate_session(_s)
@@ -313,7 +313,7 @@ if not st.session_state.logged_in:
                 st.session_state.conv_id           = None
                 st.session_state["_session_token"] = _s
         else:
-            st.query_params.pop("s", None)
+            st.query_params.pop("s", None)'''
 
 # =============================================================================
 # HELPERS
@@ -743,6 +743,17 @@ def show_sidebar() -> None:
             btn_type = "primary" if active else "secondary"
             if st.button(label, use_container_width=True, key=f"nav_{pg}", type=btn_type):
                 st.session_state.page = pg
+                st.rerun()
+
+            # Botão nova conversa de voz
+        if st.session_state.page == "voice":
+            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+            if st.button("➕ Nova conversa", use_container_width=True, key="new_conv_btn"):
+                st.session_state.conv_id = new_conversation(username)
+                for k in ["_vm_history", "_vm_reply", "_vm_tts_b64",
+                          "_vm_user_said", "_vm_error", "_vm_last_upload"]:
+                    st.session_state.pop(k, None)
+                st.session_state["_vm_history"] = []
                 st.rerun()
 
         st.markdown("<hr style='border:none;border-top:1px solid #1a2535;margin:10px 0;'/>",
@@ -1556,13 +1567,31 @@ def show_dashboard() -> None:
 # =============================================================================
 def main():
     if not st.session_state.logged_in:
+        # Tenta auto-login via query param ?s=TOKEN
+        _s = st.query_params.get("s", "")
+        if _s and len(_s) > 10:
+            _ud = validate_session(_s)
+            if _ud:
+                _un = _ud.get("_resolved_username") or next(
+                    (k for k, v in load_students().items() if v["password"] == _ud["password"]), None
+                )
+                if _un:
+                    st.session_state.logged_in         = True
+                    st.session_state.user              = {"username": _un, **_ud}
+                    st.session_state.page              = "dashboard" if _ud["role"] == "professor" else "voice"
+                    st.session_state.conv_id           = None
+                    st.session_state["_session_token"] = _s
+                    st.rerun()
+            else:
+                st.query_params.pop("s", None)
         show_login()
         return
 
-    # Re-salva o token no localStorage a cada render (garante persistência após reload)
+    # Mantém token no query param a cada render — é o método mais confiável no Streamlit Cloud
     token = st.session_state.get("_session_token", "")
     if token:
-        js_save_session(token)
+        st.query_params["s"] = token
+        js_save_session(token)  # salva também no localStorage/cookie como backup
 
     show_sidebar()
     page = st.session_state.page
@@ -1578,5 +1607,3 @@ def main():
     else:
         st.session_state.page = "voice"
         st.rerun()
-
-main()
