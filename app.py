@@ -938,7 +938,7 @@ html,body{{
 
 /* ---- Historico de bolhas ---- */
 .history-wrap{{
-    width:100%;max-width:900px;
+    width:100%;max-width:1100px;
     flex:1;min-height:0;
     overflow-y:auto;display:flex;flex-direction:column;gap:8px;
     padding:8px 4px;
