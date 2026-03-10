@@ -228,10 +228,10 @@ html,body{{
     background:linear-gradient(180deg,#060a10 85%,transparent 100%);
 }}
 /* Avatar menor em telas pequenas */
-.avatar-wrap{{position:relative;width:180px;height:180px;flex-shrink:0;}}
+.avatar-wrap{{position:relative;width:200px;height:200px;flex-shrink:0;}}
 @media(max-height:700px){{
-    .avatar-wrap{{width:120px;height:120px;}}
-    .avatar-img,.avatar-emoji{{width:80px!important;height:80px!important;}}
+    .avatar-wrap{{width:130px;height:130px;}}
+    .avatar-img,.avatar-emoji{{width:130px!important;height:130px!important;}}
     .avatar-section{{padding:6px 0 4px;}}
     .prof-name{{font-size:.85rem!important;}}
 }}
@@ -248,13 +248,13 @@ html,body{{
 @keyframes ring-pulse{{0%,100%{{opacity:.4;transform:scale(1);}}50%{{opacity:.8;transform:scale(1.03);}}}}
 @keyframes ring-glow{{0%{{box-shadow:0 0 0 0 {_rgba(ring_color,.5)};}}70%{{box-shadow:0 0 14px {_rgba(ring_color,0)};}}100%{{box-shadow:0 0 0 0 {_rgba(ring_color,0)};}}}}
 .avatar-img{{
-    width:180px;height:180px;border-radius:50%;
-    object-fit:cover;object-position:top;
+    width:200px;height:200px;border-radius:50%;
+    object-fit:cover;object-position:top center;
     border:3px solid {ring_color};
     box-shadow:0 0 32px {_rgba(ring_color,.25)};
 }}
 .avatar-emoji{{
-    width:180px;height:180px;border-radius:50%;
+    width:200px;height:200px;border-radius:50%;
     background:linear-gradient(135deg,#1a2535,#0f1824);
     border:3px solid {ring_color};
     display:flex;align-items:center;justify-content:center;font-size:54px;
@@ -709,4 +709,4 @@ try{{
 
 }})();
 </script>
-</body></html>""", height=800, scrolling=False)
+</body></html>""", height=920, scrolling=False)

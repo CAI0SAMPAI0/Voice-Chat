@@ -38,10 +38,55 @@ def show_login() -> None:
     st.markdown("<style>[data-testid='stSidebar']{display:none!important;}</style>",
                 unsafe_allow_html=True)
 
+# PARA:
+    st.markdown("""<style>
+[data-testid='stSidebar']{display:none!important;}
+
+/* ── Centraliza o layout ── */
+section[data-testid="stMain"] > div,
+.main .block-container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 100vh !important;
+    padding: 0 !important;
+}
+
+/* ── Botões de aba: Entrar / Criar Conta ── */
+div[data-testid="stButton"] > button {
+    background: transparent !important;
+    border: 1px solid #7c4dcc !important;
+    color: #b48af7 !important;
+    border-radius: 12px !important;
+}
+div[data-testid="stButton"] > button[kind="primary"],
+div[data-testid="stButton"] > button[data-testid="baseButton-primary"] {
+    background: linear-gradient(135deg, #6c3fc5, #8b5cf6) !important;
+    border: 1px solid #7c4dcc !important;
+    color: #fff !important;
+    box-shadow: 0 0 14px rgba(139,92,246,0.4) !important;
+}
+
+/* ── Botão submit dentro do form ── */
+div[data-testid="stFormSubmitButton"] > button {
+    background: linear-gradient(135deg, #6c3fc5, #8b5cf6) !important;
+    border: 1px solid #7c4dcc !important;
+    color: #fff !important;
+    border-radius: 12px !important;
+    box-shadow: 0 0 14px rgba(139,92,246,0.3) !important;
+    font-weight: 700 !important;
+}
+div[data-testid="stFormSubmitButton"] > button:hover {
+    background: linear-gradient(135deg, #7c4dcc, #9d6ff7) !important;
+    box-shadow: 0 0 20px rgba(139,92,246,0.5) !important;
+}
+</style>""", unsafe_allow_html=True)
+
     if "_login_tab" not in st.session_state:
         st.session_state["_login_tab"] = "login"
 
-    _, col, _ = st.columns([1, 1.8, 1])
+    _, col, _ = st.columns([0.5, 2.2, 0.5])
     with col:
         # Header visual
         components.html(f"""<!DOCTYPE html><html><head>
