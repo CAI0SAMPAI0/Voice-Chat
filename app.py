@@ -95,6 +95,11 @@ _STRINGS = {
         "section_learning":   "🎓 Perfil de Aprendizado",
         "section_lang":       "🌐 Idioma da Interface",
         "reload_lang":        "Salvo! Recarregue para ver o novo idioma.",
+        "section_appearance": "🎨 Aparência",
+        "ring_color":         "Cor do anel",
+        "user_bubble_color":  "Sua bolha",
+        "bot_bubble_color":   "Bolha da IA",
+        "appearance_hint":    "As cores aparecem imediatamente no modo conversa.",
     },
     "en-US": {
         "username":           "Username",
@@ -149,6 +154,11 @@ _STRINGS = {
         "section_learning":   "🎓 Learning Profile",
         "section_lang":       "🌐 Interface Language",
         "reload_lang":        "Saved! Reload to see the new language.",
+        "section_appearance": "🎨 Appearance",
+        "ring_color":         "Ring colour",
+        "user_bubble_color":  "Your bubble",
+        "bot_bubble_color":   "AI bubble",
+        "appearance_hint":    "Colours apply instantly in conversation mode.",
     },
     "en-UK": {
         "username":           "Username",
@@ -203,6 +213,11 @@ _STRINGS = {
         "section_learning":   "🎓 Learning Profile",
         "section_lang":       "🌐 Interface Language",
         "reload_lang":        "Saved! Reload to see the new language.",
+        "section_appearance": "🎨 Appearance",
+        "ring_color":         "Ring colour",
+        "user_bubble_color":  "Your bubble",
+        "bot_bubble_color":   "AI bubble",
+        "appearance_hint":    "Colours apply instantly in conversation mode.",
     },
 }
 
@@ -360,15 +375,15 @@ def user_avatar_html(username: str, size: int = 36, **_) -> str:
     return _avatar_circle_html(_get_avatar(username), size)
 
 def avatar_html(size: int = 52, speaking: bool = False) -> str:
-    """Avatar da professora com anel de 'speaking' animado."""
+    """Avatar da professora — background-image evita flash."""
     cls   = "speaking" if speaking else ""
-    photo = PHOTO_B64  # usa cache — evita re-leitura e flash
+    photo = PHOTO_B64
     if photo:
         return (
-            f'<div class="avatar-wrap {cls}" style="width:{size}px;height:{size}px;'
-            f'overflow:hidden;border-radius:50%;">'
-            f'<img src="{photo}" class="avatar-img" style="width:100%;height:100%;'
-            f'object-fit:cover;object-position:top;display:block;"/>'
+            f'<div class="avatar-wrap {cls}" style="'
+            f'width:{size}px;height:{size}px;border-radius:50%;flex-shrink:0;'
+            f'background:url({photo}) center top/cover no-repeat;'
+            f'position:relative;overflow:hidden;">'
             f'<div class="avatar-ring"></div></div>'
         )
     return (
@@ -431,6 +446,7 @@ def _logout():
         del st.session_state[k]
     for k, v in _DEFAULTS.items():
         st.session_state[k] = v
+    st.session_state.pop("_session_saved", None)
 
 def js_save_session(token: str) -> None:
     """Salva token no localStorage E no cookie (max-age 30 dias)."""
@@ -473,6 +489,53 @@ section[data-testid="stSidebar"] {
     border-right: 1px solid #1a2535 !important;
     min-width: 240px !important;
     max-width: 300px !important;
+}
+/* ---- Botão de abrir/fechar sidebar — SEMPRE visível ---- */
+[data-testid="collapsedControl"],
+button[data-testid="collapsedControl"],
+[aria-label="Open sidebar"],
+[aria-label="Close sidebar"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    top: 14px !important;
+    left: 10px !important;
+    z-index: 99999 !important;
+    background: #0f1824 !important;
+    border: 1px solid #1a2535 !important;
+    border-radius: 10px !important;
+    width: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,.5) !important;
+    transition: background .2s, border-color .2s !important;
+    cursor: pointer !important;
+}
+[data-testid="collapsedControl"]:hover,
+[aria-label="Open sidebar"]:hover,
+[aria-label="Close sidebar"]:hover {
+    background: #1a2535 !important;
+    border-color: #f0a500 !important;
+}
+[data-testid="collapsedControl"] svg,
+[aria-label="Open sidebar"] svg,
+[aria-label="Close sidebar"] svg {
+    fill: #8b949e !important;
+    width: 16px !important;
+    height: 16px !important;
+}
+[data-testid="collapsedControl"]:hover svg,
+[aria-label="Open sidebar"]:hover svg {
+    fill: #f0a500 !important;
+}
+/* ---- Layout de páginas internas (settings, history, dashboard) ---- */
+.pav-page {
+    padding: 1.5rem 2rem;
+    max-width: 820px;
 }
 /* ---- Botoes Streamlit base ---- */
 div[data-testid="stButton"] > button {
@@ -605,6 +668,7 @@ p{{font-size:.72rem;color:#3a4e5e;text-align:center;}}
                             )
                             token = create_session(real_u)
                             st.session_state["_session_token"] = token
+                            st.session_state["_session_saved"] = True
                             js_save_session(token)
                             st.rerun()
                         else:
@@ -777,32 +841,23 @@ def show_voice() -> None:
     lang     = profile.get("language", "pt-BR")
     speech_lang = profile.get("speech_lang", "en-US")
 
-    # Elimina scroll/padding da página pai para o iframe ocupar 100vh
+    # Cores personalizadas
+    ring_color        = profile.get("ring_color",        "#f0a500")
+    user_bubble_color = profile.get("user_bubble_color", "#2d6a4f")
+    bot_bubble_color  = profile.get("bot_bubble_color",  "#1a1f2e")
+
+    def _rgba(h: str, a: float) -> str:
+        h = h.lstrip("#")
+        if len(h) == 3: h = h[0]*2+h[1]*2+h[2]*2
+        r,g,b = int(h[0:2],16),int(h[2:4],16),int(h[4:6],16)
+        return f"rgba({r},{g},{b},{a})"
+
+    # Elimina fundo cinza e scroll externo do Streamlit no modo voz
     st.markdown("""<style>
-/* Fundo unificado — elimina o cinza do Streamlit */
-body, .stApp, [data-testid="stAppViewContainer"],
-[data-testid="stAppViewContainer"] > section,
-[data-testid="stMain"] {
-    background: #060a10 !important;
-}
-section[data-testid="stMain"] > div,
-.main .block-container,
-section[data-testid="stMain"] {
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-    max-height: 100vh !important;
-}
-/* Remove gap/padding dos containers internos do Streamlit */
-div[data-testid="stVerticalBlock"],
-div[data-testid="stVerticalBlockBorderWrapper"],
-div[data-testid="element-container"] {
-    gap: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-/* Esconde scrollbar da página pai no modo voice */
-html { overflow: hidden !important; }
+body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>section,[data-testid="stMain"]{background:#060a10!important;}
+section[data-testid="stMain"]>div,.main .block-container,section[data-testid="stMain"]{padding:0!important;margin:0!important;overflow:hidden!important;max-height:100vh!important;}
+div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:0!important;padding:0!important;margin:0!important;}
+html{overflow:hidden!important;}
 </style>""", unsafe_allow_html=True)
 
     conv_id = get_or_create_conv(username)
@@ -881,52 +936,48 @@ html,body{{
 }}
 .app{{
     display:flex;flex-direction:column;align-items:center;
-    height:100vh;padding:16px 20px 0;
-    gap:10px;overflow:hidden;
+    height:100vh;padding:0 20px 0;
+    gap:0;overflow:hidden;
 }}
-/* Avatar fixo no topo — nunca rola */
+/* ---- Avatar fixo no topo ---- */
 .avatar-section{{
-    flex-shrink:0;
-    display:flex;flex-direction:column;align-items:center;
-    gap:4px;
-    width:100%;
+    flex-shrink:0;width:100%;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    padding:16px 0 10px;
     position:sticky;top:0;z-index:10;
-    padding-bottom:6px;
-    background:linear-gradient(180deg,#060a10 80%,transparent 100%);
+    background:linear-gradient(180deg,#060a10 85%,transparent 100%);
 }}
-/* ---- Avatar ---- */
 .avatar-wrap{{
     position:relative;width:120px;height:120px;flex-shrink:0;
-    margin-top:4px;
 }}
 .avatar-ring{{
     position:absolute;inset:-8px;border-radius:50%;
-    border:2px solid rgba(240,165,0,.3);
+    border:2px solid {_rgba(ring_color,.3)};
     animation:ring-pulse 2s ease-in-out infinite;
 }}
 .avatar-ring.active{{
-    border-color:#f0a500;
-    box-shadow:0 0 0 0 rgba(240,165,0,.5);
+    border-color:{ring_color};
+    box-shadow:0 0 0 0 {_rgba(ring_color,.5)};
     animation:ring-glow 1s ease-in-out infinite;
 }}
 @keyframes ring-pulse{{0%,100%{{opacity:.4;transform:scale(1);}}50%{{opacity:.8;transform:scale(1.03);}}}}
-@keyframes ring-glow{{0%{{box-shadow:0 0 0 0 rgba(240,165,0,.5);}}70%{{box-shadow:0 0 0 14px rgba(240,165,0,0);}}100%{{box-shadow:0 0 0 0 rgba(240,165,0,0);}}}}
+@keyframes ring-glow{{0%{{box-shadow:0 0 0 0 {_rgba(ring_color,.5)};}}70%{{box-shadow:0 0 14px {_rgba(ring_color,0)};}}100%{{box-shadow:0 0 0 0 {_rgba(ring_color,0)};}}}}
 .avatar-img{{
     width:120px;height:120px;border-radius:50%;
     object-fit:cover;object-position:top;
-    border:3px solid #f0a500;
-    box-shadow:0 0 32px rgba(240,165,0,.25);
+    border:3px solid {ring_color};
+    box-shadow:0 0 32px {_rgba(ring_color,.25)};
 }}
 .avatar-emoji{{
     width:120px;height:120px;border-radius:50%;
     background:linear-gradient(135deg,#1a2535,#0f1824);
-    border:3px solid #f0a500;
+    border:3px solid {ring_color};
     display:flex;align-items:center;justify-content:center;
     font-size:54px;
     box-shadow:0 0 32px rgba(240,165,0,.2);
 }}
 .prof-name{{font-size:1rem;font-weight:700;color:#e6edf3;margin-top:6px;}}
-.status{{font-size:.68rem;color:#f0a500;margin-top:1px;}}
+.status{{font-size:.68rem;color:{ring_color};margin-top:1px;}}
 
 /* ---- Historico de bolhas ---- */
 .history-wrap{{
@@ -945,13 +996,13 @@ html,body{{
 }}
 .bubble.user{{
     align-self:flex-end;
-    background:#2d6a4f;color:#d8f3dc;
+    background:{user_bubble_color};color:#fff;
     border-bottom-right-radius:4px;
 }}
 .bubble.bot{{
     align-self:flex-start;
-    background:#1a1f2e;color:#e6edf3;
-    border:1px solid #252d3d;
+    background:{bot_bubble_color};color:#e6edf3;
+    border:1px solid {_rgba(bot_bubble_color,.8)};
     border-bottom-left-radius:4px;
 }}
 .bubble-label{{font-size:.6rem;color:#4a5a6a;margin:2px 4px;}}
@@ -1009,7 +1060,7 @@ html,body{{
 </head><body>
 <div class="app" id="app">
 
-    <!-- Avatar — fixo no topo via avatar-section sticky -->
+    <!-- Avatar — sticky no topo, nunca sai da tela -->
     <div class="avatar-section">
         <div class="avatar-wrap">
             <div class="avatar-ring" id="ring"></div>
@@ -1246,30 +1297,26 @@ try{{
 
 }})();
 
-// ── Auto-resize: ajusta o iframe para exatamente 100vh do parent ──
+// Auto-resize: ajusta iframe para 100vh do parent
 (function resizeIframe(){{
-  try {{
-    var iframes = window.parent.document.querySelectorAll('iframe');
+  try{{
+    var iframes=window.parent.document.querySelectorAll('iframe');
     for(var i=0;i<iframes.length;i++){{
-      var f=iframes[i];
       try{{
-        if(f.contentWindow === window){{
-          var h = window.parent.innerHeight;
-          f.style.height = h + 'px';
-          f.style.maxHeight = h + 'px';
-          f.style.display = 'block';
-          var p = f.parentElement;
-          while(p && p !== window.parent.document.body){{
-            p.style.margin='0';
-            p.style.padding='0';
-            p = p.parentElement;
+        if(iframes[i].contentWindow===window){{
+          var h=window.parent.innerHeight;
+          iframes[i].style.cssText='height:'+h+'px;max-height:'+h+'px;display:block;border:none;';
+          var p=iframes[i].parentElement;
+          for(var j=0;j<8&&p&&p!==window.parent.document.body;j++){{
+            p.style.margin='0';p.style.padding='0';p.style.overflow='hidden';
+            p=p.parentElement;
           }}
           break;
         }}
       }}catch(e){{}}
     }}
-  }} catch(e){{}}
-  window.parent.addEventListener('resize', resizeIframe);
+  }}catch(e){{}}
+  try{{window.parent.removeEventListener('resize',resizeIframe);window.parent.addEventListener('resize',resizeIframe);}}catch(e){{}}
 }})();
 </script>
 </body></html>""", height=800, scrolling=False)
@@ -1283,10 +1330,7 @@ def show_settings() -> None:
     profile  = user.get("profile", {})
     lang     = profile.get("language", "pt-BR")
 
-    st.markdown("""<style>
-.main .block-container{padding-top:1.5rem!important;}
-</style>""", unsafe_allow_html=True)
-
+    st.markdown("<div class='pav-page'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#e6edf3;margin-bottom:1rem;'>&#9881; {t('settings',lang)}</h2>",
                 unsafe_allow_html=True)
 
@@ -1453,6 +1497,60 @@ def show_settings() -> None:
         else:
             st.error(t("save_error", lang))
 
+    st.markdown("<hr style='border-color:#1a2535;margin:1.2rem 0;'>", unsafe_allow_html=True)
+
+    # ---- Aparência — cores do anel e das bolhas ----
+    st.markdown(f"### {t('section_appearance', lang)}")
+    st.markdown(
+        f'<p style="font-size:.75rem;color:#4a5a6a;margin:-8px 0 14px;">{t("appearance_hint",lang)}</p>',
+        unsafe_allow_html=True)
+
+    cur_ring = profile.get("ring_color",        "#f0a500")
+    cur_user = profile.get("user_bubble_color",  "#2d6a4f")
+    cur_bot  = profile.get("bot_bubble_color",   "#1a1f2e")
+
+    col_c1, col_c2, col_c3 = st.columns(3)
+    with col_c1:
+        new_ring = st.color_picker(t("ring_color",        lang), value=cur_ring, key="cp_ring")
+    with col_c2:
+        new_user = st.color_picker(t("user_bubble_color", lang), value=cur_user, key="cp_user")
+    with col_c3:
+        new_bot  = st.color_picker(t("bot_bubble_color",  lang), value=cur_bot,  key="cp_bot")
+
+    # Preview em tempo real
+    st.markdown(f"""
+<div style="display:flex;gap:12px;margin:10px 0 14px;align-items:center;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div style="width:44px;height:44px;border-radius:50%;
+                    background:#131c2a;
+                    outline:3px solid {new_ring};outline-offset:4px;
+                    box-shadow:0 0 14px {new_ring}55;"></div>
+        <span style="font-size:.58rem;color:#4a5a6a;">anel</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;flex:1;">
+        <div style="align-self:flex-end;background:{new_user};color:#fff;
+                    padding:7px 14px;border-radius:16px 16px 4px 16px;
+                    font-size:.75rem;max-width:55%;">Você</div>
+        <div style="align-self:flex-start;background:{new_bot};color:#e6edf3;
+                    padding:7px 14px;border-radius:16px 16px 16px 4px;
+                    border:1px solid #252d3d;font-size:.75rem;max-width:55%;">Professora</div>
+    </div>
+</div>""", unsafe_allow_html=True)
+
+    if st.button("💾 " + t("save", lang), key="save_appearance"):
+        p = dict(profile)
+        p["ring_color"]        = new_ring
+        p["user_bubble_color"] = new_user
+        p["bot_bubble_color"]  = new_bot
+        saved = update_profile(username, p)
+        if saved:
+            st.session_state.user["profile"] = p
+            st.success(t("data_saved", lang))
+        else:
+            st.error(t("save_error", lang))
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
 # =============================================================================
 # TELA DE HISTORICO
 # =============================================================================
@@ -1462,10 +1560,7 @@ def show_history() -> None:
     profile  = user.get("profile", {})
     lang     = profile.get("language", "pt-BR")
 
-    st.markdown("""<style>
-.main .block-container{padding-top:1.5rem!important;}
-</style>""", unsafe_allow_html=True)
-
+    st.markdown("<div class='pav-page'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#e6edf3;margin-bottom:1rem;'>&#128196; {t('history',lang)}</h2>",
                 unsafe_allow_html=True)
 
@@ -1516,10 +1611,7 @@ def show_dashboard() -> None:
     profile = user.get("profile", {})
     lang    = profile.get("language", "pt-BR")
 
-    st.markdown("""<style>
-.main .block-container{padding-top:1.5rem!important;}
-</style>""", unsafe_allow_html=True)
-
+    st.markdown("<div class='pav-page'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#e6edf3;margin-bottom:1rem;'>&#128202; {t('dashboard',lang)}</h2>",
                 unsafe_allow_html=True)
 
@@ -1598,7 +1690,9 @@ def main():
     if token and st.query_params.get("s") != token:
         st.query_params["s"] = token
 
-    js_save_session(token)  # backup no localStorage/cookie
+    if token and not st.session_state.get("_session_saved"):
+        js_save_session(token)
+        st.session_state["_session_saved"] = True
 
     show_sidebar()
     page = st.session_state.page
