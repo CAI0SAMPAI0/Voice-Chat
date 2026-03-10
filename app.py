@@ -490,48 +490,33 @@ section[data-testid="stSidebar"] {
     min-width: 240px !important;
     max-width: 300px !important;
 }
-/* ---- Botão de abrir/fechar sidebar — SEMPRE visível ---- */
-[data-testid="collapsedControl"],
-button[data-testid="collapsedControl"],
-[aria-label="Open sidebar"],
-[aria-label="Close sidebar"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
+/* ---- Sidebar toggle — estilo base (JS garante visibilidade) ---- */
+#pav-sidebar-toggle {
     position: fixed !important;
     top: 14px !important;
     left: 10px !important;
     z-index: 99999 !important;
+    width: 36px !important;
+    height: 36px !important;
     background: #0f1824 !important;
     border: 1px solid #1a2535 !important;
     border-radius: 10px !important;
-    width: 34px !important;
-    height: 34px !important;
-    padding: 0 !important;
+    display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,.5) !important;
-    transition: background .2s, border-color .2s !important;
     cursor: pointer !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,.5) !important;
+    transition: background .15s, border-color .15s !important;
 }
-[data-testid="collapsedControl"]:hover,
-[aria-label="Open sidebar"]:hover,
-[aria-label="Close sidebar"]:hover {
+#pav-sidebar-toggle:hover {
     background: #1a2535 !important;
     border-color: #f0a500 !important;
 }
-[data-testid="collapsedControl"] svg,
-[aria-label="Open sidebar"] svg,
-[aria-label="Close sidebar"] svg {
-    fill: #8b949e !important;
-    width: 16px !important;
-    height: 16px !important;
+#pav-sidebar-toggle svg {
+    width: 18px; height: 18px; fill: #8b949e;
+    transition: fill .15s;
 }
-[data-testid="collapsedControl"]:hover svg,
-[aria-label="Open sidebar"]:hover svg {
-    fill: #f0a500 !important;
-}
+#pav-sidebar-toggle:hover svg { fill: #f0a500; }
 /* ---- Layout de páginas internas (settings, history, dashboard) ---- */
 .pav-page {
     padding: 1.5rem 2rem;
@@ -1695,6 +1680,78 @@ def main():
         st.session_state["_session_saved"] = True
 
     show_sidebar()
+
+    # Botão flutuante de toggle da sidebar — sempre visível via JS
+    components.html("""<!DOCTYPE html><html><head>
+<style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
+</head><body><script>
+(function(){
+  var par = window.parent ? window.parent.document : null;
+  if(!par) return;
+
+  // Remove botão anterior se existir
+  var old = par.getElementById('pav-sidebar-toggle');
+  if(old) old.remove();
+
+  // Cria botão flutuante
+  var btn = par.createElement('button');
+  btn.id = 'pav-sidebar-toggle';
+  btn.title = 'Menu';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>';
+  par.body.appendChild(btn);
+
+  function findNativeBtn(){
+    // tenta vários seletores que o Streamlit usa
+    return par.querySelector('[data-testid="collapsedControl"] button') ||
+           par.querySelector('button[data-testid="collapsedControl"]') ||
+           par.querySelector('[aria-label="Open sidebar"]') ||
+           par.querySelector('[aria-label="Close sidebar"]') ||
+           par.querySelector('[data-testid="baseButton-headerNoPadding"]') ||
+           null;
+  }
+
+  btn.addEventListener('click', function(){
+    var native = findNativeBtn();
+    if(native){
+      native.click();
+    } else {
+      // fallback: alterna largura da sidebar diretamente
+      var sb = par.querySelector('section[data-testid="stSidebar"]');
+      if(sb){
+        var collapsed = sb.style.display === 'none' || sb.offsetWidth < 10;
+        sb.style.display = collapsed ? '' : 'none';
+      }
+    }
+    // pequena animação no ícone
+    btn.style.transform = 'scale(.88)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  });
+
+  // Estilo inline garantido (independe do CSS da página)
+  btn.setAttribute('style', [
+    'position:fixed','top:14px','left:10px','z-index:2147483647',
+    'width:36px','height:36px',
+    'background:#0f1824','border:1px solid #1a2535','border-radius:10px',
+    'display:flex','align-items:center','justify-content:center',
+    'cursor:pointer','box-shadow:0 2px 10px rgba(0,0,0,.6)',
+    'transition:background .15s,border-color .15s,transform .15s',
+    'padding:0','outline:none'
+  ].join(';'));
+
+  btn.addEventListener('mouseenter', function(){
+    btn.style.background='#1a2535';
+    btn.style.borderColor='#f0a500';
+    btn.querySelector('svg').style.fill='#f0a500';
+  });
+  btn.addEventListener('mouseleave', function(){
+    btn.style.background='#0f1824';
+    btn.style.borderColor='#1a2535';
+    btn.querySelector('svg').style.fill='#8b949e';
+  });
+  btn.querySelector('svg').style.cssText='width:18px;height:18px;fill:#8b949e;transition:fill .15s;';
+})();
+</script></body></html>""", height=1)
+
     page = st.session_state.page
 
     if page == "voice":
