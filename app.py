@@ -611,7 +611,7 @@ div[data-testid="stButton"] > button {
     position: absolute !important;
     inset: 0 !important; width: 100% !important; height: 100% !important;
     opacity: 0 !important; cursor: pointer !important;
-    z-index: 10 !important; border: none !important;
+    z-index: 20 !important; border: none !important;
     background: transparent !important;
 }
 /* ---- Scrollbar ---- */
