@@ -533,6 +533,8 @@ section[data-testid="stSidebar"] {
     z-index: 2000 !important;
     transition: transform 0.28s cubic-bezier(.4,0,.2,1) !important;
     transform: translateX(0) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 section[data-testid="stSidebar"].pav-sb-closed {
     transform: translateX(-270px) !important;
@@ -544,20 +546,7 @@ section[data-testid="stSidebar"] > div:first-child {
     flex-direction: column !important;
     min-height: 100vh !important;
 }
-/* Conteúdo principal — afastado da sidebar */
-[data-testid="stAppViewContainer"],
-.main, [data-testid="stMain"],
-section[data-testid="stMain"] {
-    margin-left: 260px !important;
-    transition: margin-left 0.28s cubic-bezier(.4,0,.2,1) !important;
-}
-body.pav-sb-closed [data-testid="stAppViewContainer"],
-body.pav-sb-closed .main,
-body.pav-sb-closed [data-testid="stMain"],
-body.pav-sb-closed section[data-testid="stMain"] {
-    margin-left: 0 !important;
-}
-/* ---- Esconde botões nativos de colapso e header vazio ---- */
+/* ---- Esconde botões nativos e header vazio ---- */
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"],
 button[aria-label="Close sidebar"],
@@ -565,7 +554,6 @@ button[aria-label="Open sidebar"],
 [data-testid="stSidebarHeader"] {
     display: none !important;
 }
-/* Remove gap excessivo */
 section[data-testid="stSidebar"] .stButton { margin-bottom: 4px !important; }
 section[data-testid="stSidebar"] .block-container { padding-top: 0 !important; }
 /* ---- Botão de seta ---- */
@@ -585,7 +573,6 @@ section[data-testid="stSidebar"] .block-container { padding-top: 0 !important; }
     box-shadow: 0 2px 8px rgba(0,0,0,.6) !important;
     transition: left 0.28s cubic-bezier(.4,0,.2,1), background .15s !important;
     user-select: none !important;
-    line-height: 1 !important;
 }
 #pav-sb-btn:hover { background: #1a2535 !important; }
 #pav-sb-btn.pav-closed { left: 8px !important; }
@@ -781,66 +768,53 @@ def show_sidebar() -> None:
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
 
-    # Injeta via st.markdown (vai direto no documento, não em iframe)
-    # O script usa um id único para não duplicar e um MutationObserver
-    # para re-aplicar o estado após cada rerun do Streamlit automaticamente.
-    st.markdown("""
-<script>
+    components.html("""<!DOCTYPE html><html><head>
+<style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
+</head><body><script>
 (function(){
-    if(window._pavSbInit) return;   // já rodou nesta sessão de aba
-    window._pavSbInit = true;
-
     var KEY = 'pav_sb_open';
+    var par = window.parent;
+    var doc = par.document;
 
     function isOpen(){
-        try{ return sessionStorage.getItem(KEY) !== 'false'; }catch(e){ return true; }
+        try{ return par.sessionStorage.getItem(KEY) !== 'false'; }
+        catch(e){ return true; }
     }
     function setOpen(v){
-        try{ sessionStorage.setItem(KEY, v?'true':'false'); }catch(e){}
+        try{ par.sessionStorage.setItem(KEY, v ? 'true' : 'false'); }
+        catch(e){}
     }
-
     function apply(){
-        var sb  = document.querySelector('section[data-testid="stSidebar"]');
-        var btn = document.getElementById('pav-sb-btn');
+        var sb  = doc.querySelector('section[data-testid="stSidebar"]');
+        var btn = doc.getElementById('pav-sb-btn');
         if(!sb || !btn) return;
         var open = isOpen();
         sb.classList.toggle('pav-sb-closed', !open);
-        document.body.classList.toggle('pav-sb-closed', !open);
-        btn.classList.toggle('pav-closed', !open);
-        btn.textContent = open ? '◀' : '▶';
+        btn.classList.toggle('pav-closed',   !open);
+        btn.textContent = open ? '\u25c4' : '\u25ba';
     }
-
-    function ensureBtn(){
-        var btn = document.getElementById('pav-sb-btn');
+    function setup(){
+        var btn = doc.getElementById('pav-sb-btn');
         if(!btn){
-            btn = document.createElement('button');
+            btn = doc.createElement('button');
             btn.id = 'pav-sb-btn';
-            document.body.appendChild(btn);
+            doc.body.appendChild(btn);
         }
-        // Re-registra onclick sempre (pode ter sido perdido)
+        // Sempre re-registra — sobrevive a reruns
         btn.onclick = function(e){
             e.stopPropagation();
             setOpen(!isOpen());
             apply();
         };
-        return btn;
-    }
-
-    function run(){
-        ensureBtn();
         apply();
     }
-
-    // Roda agora
-    run();
-
-    // MutationObserver: re-aplica sempre que o Streamlit modificar o DOM (rerun)
-    var obs = new MutationObserver(function(){ run(); });
-    obs.observe(document.body, { childList: true, subtree: true });
+    setup();
+    // Garante re-execução após cada rerun do Streamlit
+    setTimeout(setup, 200);
+    setTimeout(setup, 800);
+    setTimeout(setup, 2000);
 })();
-</script>
-""", unsafe_allow_html=True)
-
+</script></body></html>""", height=0)
     with st.sidebar:
         # Avatar do aluno + nome
         uav_html = user_avatar_html(username, size=62, fallback_emoji="🎓")
