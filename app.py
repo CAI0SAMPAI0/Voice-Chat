@@ -19,6 +19,14 @@ from database import (
 from transcriber import transcribe_bytes
 from tts import text_to_speech, tts_available
 
+# set_page_config DEVE ser a primeira chamada Streamlit
+st.set_page_config(
+    page_title="PAV",
+    page_icon="🎙️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 # Font Awesome
 st.markdown(
     '<link rel="stylesheet" '
