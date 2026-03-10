@@ -24,7 +24,6 @@ st.set_page_config(
     page_title="PAV",
     page_icon="🎙️",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
 # Font Awesome
@@ -521,64 +520,17 @@ body {
     min-height: 100vh;
     min-height: -webkit-fill-available;
 }
-/* ---- Sidebar base — posicionada à DIREITA ---- */
+/* ---- Sidebar base ---- */
 section[data-testid="stSidebar"] {
     background: #070c15 !important;
-    border-left: 1px solid #1a2535 !important;
-    border-right: none !important;
-    width: 260px !important;
-    min-width: 260px !important;
-    max-width: 260px !important;
-    transition: transform 0.28s cubic-bezier(.4,0,.2,1) !important;
-    z-index: 1000 !important;
-    /* Move para a direita */
-    order: 999 !important;
+    border-right: 1px solid #1a2535 !important;
+    min-width: 220px !important;
+    max-width: 300px !important;
+    transition: all 0.28s cubic-bezier(.4,0,.2,1) !important;
 }
-/* Força o layout principal a usar flex row-reverse para sidebar à direita */
-.stApp > div:first-child,
-[data-testid="stAppViewContainer"] {
-    flex-direction: row-reverse !important;
-    display: flex !important;
-}
-/* Sidebar fechada no mobile — desliza da DIREITA */
+/* Mobile */
 @media (max-width: 768px) {
-    section[data-testid="stSidebar"] {
-        position: fixed !important;
-        top: 0 !important; right: 0 !important; left: auto !important; bottom: 0 !important;
-        transform: translateX(100%) !important;
-        z-index: 2000 !important;
-    }
-    section[data-testid="stSidebar"].pav-open {
-        transform: translateX(0) !important;
-        box-shadow: -4px 0 32px rgba(0,0,0,.7) !important;
-    }
-    /* Overlay escuro quando sidebar aberta */
-    .pav-overlay {
-        display: none;
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,.55);
-        z-index: 1999;
-    }
-    .pav-overlay.pav-open { display: block; }
-}
-/* Desktop: sidebar sempre visível à direita */
-@media (min-width: 769px) {
-    section[data-testid="stSidebar"] {
-        position: relative !important;
-        transform: none !important;
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        right: 0 !important;
-        left: auto !important;
-    }
-    section[data-testid="stSidebar"].pav-hidden {
-        transform: translateX(100%) !important;
-        position: absolute !important;
-    }
-    .pav-toggle-btn {
-        display: flex !important;
-    }
+    section[data-testid="stSidebar"] { min-width: 0 !important; }
 }
 /* Padding interno da sidebar */
 section[data-testid="stSidebar"] > div:first-child {
@@ -587,15 +539,6 @@ section[data-testid="stSidebar"] > div:first-child {
     flex-direction: column !important;
     min-height: 100vh !important;
 }
-/* Esconde todos os toggles nativos da sidebar */
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"],
-[data-testid="stSidebarHeader"],
-button[aria-label="Close sidebar"],
-button[aria-label="Open sidebar"],
-[data-testid="stSidebar"] [data-testid="baseButton-headerNoPadding"] {
-    display: none !important;
-}
 /* Remove gap excessivo entre elementos da sidebar */
 section[data-testid="stSidebar"] .stButton {
     margin-bottom: 4px !important;
@@ -603,40 +546,54 @@ section[data-testid="stSidebar"] .stButton {
 section[data-testid="stSidebar"] .block-container {
     padding-top: 0 !important;
 }
-/* ---- Botão de seta customizado (substituindo hambúrguer) — canto DIREITO ---- */
-.pav-toggle-btn {
-    position: fixed;
-    top: 12px; right: 12px; left: auto !important;
-    z-index: 3000;
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    background: #0f1824;
-    border: 1px solid #1a2535;
-    display: flex;
-    align-items: center; justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 12px rgba(0,0,0,.4);
-    transition: background .2s;
-    font-size: 18px;
-    color: #e6edf3;
-    user-select: none;
+/* ---- Estiliza o botão NATIVO de colapso do Streamlit como seta ---- */
+/* Botão que fica dentro da sidebar (fecha) */
+[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"],
+[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button {
+    position: fixed !important;
+    top: 12px !important;
+    left: 268px !important;
+    z-index: 3000 !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    background: #0f1824 !important;
+    border: 1px solid #1a2535 !important;
+    color: #e6edf3 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.4) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    transition: background .2s !important;
 }
-.pav-toggle-btn:hover { background: #1a2535; }
-/* Seta aponta para ESQUERDA (abre sidebar à direita) */
-.pav-toggle-btn::after {
-    content: '◀';
-    transition: transform .25s;
-    display: block;
-    line-height: 1;
+[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"]:hover,
+[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button:hover {
+    background: #1a2535 !important;
 }
-/* Quando aberta, seta aponta para DIREITA (fecha) */
-.pav-toggle-btn.pav-open::after {
-    content: '▶';
+/* Botão de reabrir que fica fora da sidebar (colapso) */
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="collapsedControl"] button {
+    background: #0f1824 !important;
+    border: 1px solid #1a2535 !important;
+    color: #e6edf3 !important;
+    border-radius: 0 8px 8px 0 !important;
+    box-shadow: 2px 0 8px rgba(0,0,0,.4) !important;
+    transition: background .2s !important;
 }
-/* Remove o <span> antigo do hambúrguer */
-.pav-toggle-btn span { display: none !important; }
-/* Empurra o conteúdo principal para não ficar atrás do botão — agora à direita */
-.pav-page { padding-right: 3.5rem !important; padding-left: 0 !important; }
+[data-testid="stSidebarCollapsedControl"] button:hover,
+[data-testid="collapsedControl"] button:hover {
+    background: #1a2535 !important;
+}
+/* Esconde apenas o header visual da sidebar (título), mantém o botão de fechar */
+[data-testid="stSidebarHeader"] {
+    padding: 0 !important;
+    min-height: 0 !important;
+}
+/* Esconde o logo/texto padrão do header mas não o botão */
+[data-testid="stSidebarHeader"] > div:not(:has(button)) {
+    display: none !important;
+}
 /* ---- Layout de páginas internas (settings, history, dashboard) ---- */
 .pav-page {
     padding: 1.5rem 2rem;
@@ -832,78 +789,8 @@ def show_sidebar() -> None:
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
 
-    # Injeta botão de seta (direita) + overlay + lógica de toggle/close via JS
-    components.html("""<!DOCTYPE html><html><head>
-<style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
-</head><body><script>
-(function(){
-    function init(){
-        var doc = window.parent.document;
-        // Não duplica
-        if(doc.getElementById('pav-ham')) return;
-
-        // Overlay
-        var ov = doc.createElement('div');
-        ov.id = 'pav-overlay';
-        ov.className = 'pav-overlay';
-        doc.body.appendChild(ov);
-
-        // Botão de seta — posicionado no canto DIREITO via CSS
-        var btn = doc.createElement('button');
-        btn.id = 'pav-ham';
-        btn.className = 'pav-toggle-btn';
-        btn.setAttribute('aria-label','Menu');
-        // O ícone de seta é injetado via CSS ::after — não precisa de innerHTML
-        doc.body.appendChild(btn);
-
-        var sidebar = doc.querySelector('section[data-testid="stSidebar"]');
-
-        function open(){
-            btn.classList.add('pav-open');
-            ov.classList.add('pav-open');
-            if(sidebar) sidebar.classList.add('pav-open');
-        }
-        function close(){
-            btn.classList.remove('pav-open');
-            ov.classList.remove('pav-open');
-            if(sidebar) sidebar.classList.remove('pav-open');
-        }
-        function toggle(){ btn.classList.contains('pav-open') ? close() : open(); }
-
-        // Clique no botão: abre OU fecha corretamente
-        btn.addEventListener('click', function(e){
-            e.stopPropagation();
-            toggle();
-        });
-
-        // Clique no overlay fecha a sidebar
-        ov.addEventListener('click', close);
-
-        // Fecha ao clicar em item de nav da sidebar (no mobile)
-        if(sidebar){
-            sidebar.addEventListener('click', function(e){
-                var isMobile = window.parent.innerWidth <= 768;
-                if(isMobile && e.target && e.target.tagName === 'BUTTON'){
-                    setTimeout(close, 150);
-                }
-            });
-        }
-
-        // Garante que o botão nativo de fechar do Streamlit não interfira
-        var nativeClose = doc.querySelector('button[aria-label="Close sidebar"]');
-        if(nativeClose){
-            nativeClose.addEventListener('click', function(e){
-                e.stopPropagation();
-                close();
-            });
-        }
-    }
-    // Tenta de imediato e também após DOM estar pronto
-    if(document.readyState === 'complete'){ init(); } else { window.addEventListener('load', init); }
-    setTimeout(init, 300);
-    setTimeout(init, 800);
-})();
-</script></body></html>""", height=0)
+    # O fechamento da sidebar usa o botão nativo do Streamlit (igual ao app de referência).
+    # Não é necessário injetar botão customizado — o CSS acima já estiliza o botão nativo.
 
     with st.sidebar:
         # Avatar do aluno + nome
