@@ -703,15 +703,41 @@ p{{font-size:.72rem;color:#3a4e5e;text-align:center;}}
 # SIDEBAR (quando logado)
 # =============================================================================
 def show_sidebar() -> None:
-    if not st.session_state.get("_sidebar_open", True):
-        return
     user     = st.session_state.user
     username = user["username"]
     profile  = user.get("profile", {})
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
+    sb_open  = st.session_state.get("_sidebar_open", True)
+
+    # Botão ☰ fixo no topo-esquerdo quando sidebar fechada
+    if not sb_open:
+        st.markdown("""<style>
+#pav-open-btn{position:fixed;top:12px;left:10px;z-index:99999;}
+#pav-open-btn button{
+    width:36px!important;height:36px!important;min-height:0!important;
+    background:#0f1824!important;border:1px solid #1a2535!important;
+    border-radius:10px!important;font-size:18px!important;
+    padding:0!important;color:#8b949e!important;
+    box-shadow:0 2px 10px rgba(0,0,0,.5)!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;
+}
+#pav-open-btn button:hover{background:#1a2535!important;color:#f0a500!important;border-color:#f0a500!important;}
+</style><div id="pav-open-btn">""", unsafe_allow_html=True)
+        if st.button("☰", key="sb_open_btn"):
+            st.session_state["_sidebar_open"] = True
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
 
     with st.sidebar:
+        # Botão fechar sidebar
+        col_close, col_spacer = st.columns([1, 4])
+        with col_close:
+            if st.button("✕", key="sb_close_btn", help="Fechar menu"):
+                st.session_state["_sidebar_open"] = False
+                st.rerun()
+
         # Avatar do aluno + nome
         uav_html = user_avatar_html(username, size=52, fallback_emoji="🎓")
 
@@ -1689,79 +1715,12 @@ def main():
 
     show_sidebar()
 
-    # ── Controle de visibilidade da sidebar via session_state ──────────
-    sidebar_open = st.session_state.get("_sidebar_open", True)
-
-    # CSS que esconde/mostra a sidebar e ajusta o conteúdo
-    if not sidebar_open:
+    # CSS: esconde sidebar quando fechada, ajusta conteúdo
+    if not st.session_state.get("_sidebar_open", True):
         st.markdown("""<style>
-section[data-testid="stSidebar"] { display: none !important; }
-section[data-testid="stMain"],
-.main { margin-left: 0 !important; width: 100% !important; }
+section[data-testid="stSidebar"]{display:none!important;}
+section[data-testid="stMain"],.main{margin-left:0!important;width:100vw!important;}
 </style>""", unsafe_allow_html=True)
-
-    # Botão hamburger flutuante usando st.markdown + form trick
-    # Posicionado via CSS fixed, dispara rerun via link de query param
-    toggle_label = "✕" if sidebar_open else "☰"
-    toggle_help  = "Fechar menu" if sidebar_open else "Abrir menu"
-    st.markdown(f"""
-<style>
-#pav-toggle-wrap {{
-    position: fixed; top: 12px; left: 10px; z-index: 99999;
-}}
-#pav-toggle-wrap button {{
-    width: 36px !important; height: 36px !important;
-    min-height: 0 !important;
-    background: #0f1824 !important;
-    border: 1px solid #1a2535 !important;
-    border-radius: 10px !important;
-    font-size: 16px !important;
-    line-height: 1 !important;
-    padding: 0 !important;
-    color: #8b949e !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,.5) !important;
-    transition: background .15s, border-color .15s !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}}
-#pav-toggle-wrap button:hover {{
-    background: #1a2535 !important;
-    border-color: #f0a500 !important;
-    color: #f0a500 !important;
-}}
-</style>
-<div id="pav-toggle-wrap"></div>
-""", unsafe_allow_html=True)
-
-    with st.container():
-        # Posiciona o botão dentro do wrapper via JS após render
-        if st.button(toggle_label, key="sb_toggle", help=toggle_help):
-            st.session_state["_sidebar_open"] = not sidebar_open
-            st.rerun()
-
-    # Move o botão para o wrapper fixo via JS
-    components.html("""<!DOCTYPE html><html><body><script>
-(function(){
-  var par = window.parent ? window.parent.document : null;
-  if(!par) return;
-  setTimeout(function(){
-    var wrap = par.getElementById('pav-toggle-wrap');
-    // Encontra o botão com key sb_toggle — é o último button com esse texto
-    var btns = par.querySelectorAll('[data-testid="stButton"] button');
-    var toggleBtn = null;
-    btns.forEach(function(b){
-      if(b.textContent.trim() === '\u2630' || b.textContent.trim() === '\u2715'){
-        toggleBtn = b;
-      }
-    });
-    if(wrap && toggleBtn){
-      var parent = toggleBtn.closest('[data-testid="stButton"]');
-      if(parent) wrap.appendChild(parent);
-    }
-  }, 50);
-})();
-</script></body></html>""", height=1)
 
     page = st.session_state.page
 
