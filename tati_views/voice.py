@@ -159,18 +159,7 @@ html,body{overflow:hidden!important;}
             ]
 
     # Processa áudio recebido — só 1 rerun após processar
-    audio_val = st.audio_input(
-        " ", key=f"voice_input_{st.session_state.audio_key}",
-        label_visibility="collapsed",
-    )
-    if audio_val and audio_val != st.session_state.get("_vm_last_upload"):
-        st.session_state["_vm_last_upload"] = audio_val
-        for k in ["_vm_reply", "_vm_tts_b64", "_vm_user_said", "_vm_error"]:
-            st.session_state.pop(k, None)
-        with st.spinner(t("processing", lang)):
-            process_voice(audio_val.read(), conv_id)
-        st.session_state.audio_key += 1
-        st.rerun()
+    _audio_key = f"voice_input_{st.session_state.audio_key}"
 
     # Estado atual
     reply   = st.session_state.get("_vm_reply",   "")
@@ -711,3 +700,16 @@ try{{
 }})();
 </script>
 </body></html>""", height=800, scrolling=False)
+    
+    audio_val = st.audio_input(
+        " ", key=f"voice_input_{st.session_state.audio_key}",
+        label_visibility="collapsed",
+    )
+    if audio_val and audio_val != st.session_state.get("_vm_last_upload"):
+        st.session_state["_vm_last_upload"] = audio_val
+        for k in ["_vm_reply", "_vm_tts_b64", "_vm_user_said", "_vm_error"]:
+            st.session_state.pop(k, None)
+        with st.spinner(t("processing", lang)):
+            process_voice(audio_val.read(), conv_id)
+        st.session_state.audio_key += 1
+        st.rerun()
