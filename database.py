@@ -1,19 +1,18 @@
 """
-database.py — Teacher Tati · Supabase (PostgreSQL) backend v2
-Usa funções RPC do Supabase para queries otimizadas (menos round-trips).
-
-Configuração no .env / Streamlit Secrets:
-    SUPABASE_URL  = https://xxxx.supabase.co
-    SUPABASE_KEY  = eyJhbGci...
+database.py — Teacher Tati · Supabase (PostgreSQL) backend v3
+Bugs corrigidos:
+  - get_user_avatar_db: variável 'path' não era construída antes do download
+  - get_all_students_stats: chave retornada era 'messages', dashboard lia 'total_messages'
+  - list_conversations: chave retornada era 'count', history lia 'msg_count'
 """
 
 import os
 import hashlib
 import secrets
 from datetime import datetime
-import json
 
 from supabase import create_client, Client
+
 
 # ── Cliente Supabase ──────────────────────────────────────────────────────────
 
@@ -36,7 +35,6 @@ def hash_password(p: str) -> str:
 # ── Init DB ───────────────────────────────────────────────────────────────────
 
 def init_db():
-    """Garante que os usuários padrão existem."""
     db = get_client()
     _ensure_default_users(db)
 
@@ -175,19 +173,15 @@ def create_session(username: str) -> str:
 
 
 def validate_session(token: str) -> dict | None:
-    """Usa RPC para validar e atualizar last_seen em uma única query."""
     if not token:
         return None
     db = get_client()
-
-    # Tenta usar a função RPC otimizada
     try:
         result = db.rpc("validate_session", {"p_token": token}).execute()
         username = result.data
         if not username:
             return None
     except Exception:
-        # Fallback para query direta se a função RPC não existir
         row = db.table("sessions").select("username").eq("token", token).execute().data
         if not row:
             return None
@@ -217,7 +211,6 @@ def new_conversation(username: str) -> str:
 
 
 def delete_conversation(username: str, conv_id: str):
-    """Usa RPC para deletar conversa e mensagens atomicamente."""
     db = get_client()
     try:
         db.rpc("delete_conversation", {
@@ -225,18 +218,20 @@ def delete_conversation(username: str, conv_id: str):
             "p_conv_id":  conv_id,
         }).execute()
     except Exception:
-        # Fallback
         db.table("messages").delete().eq("username", username).eq("conv_id", conv_id).execute()
         db.table("conversations").delete().eq("username", username).eq("id", conv_id).execute()
 
 
 def list_conversations(username: str) -> list:
-    """Usa RPC — era N+1 queries, agora é 1 query só."""
+    """
+    Retorna lista de conversas.
+    Chaves padronizadas: id, title, date, msg_count  ← BUG CORRIGIDO
+    (antes retornava 'count', mas show_history lia 'msg_count')
+    """
     db = get_client()
     try:
         rows = db.rpc("list_conversations", {"p_username": username}).execute().data or []
     except Exception:
-        # Fallback para query direta
         return _list_conversations_fallback(username, db)
 
     result = []
@@ -251,16 +246,15 @@ def list_conversations(username: str) -> list:
         except Exception:
             date = r["id"][:13]
         result.append({
-            "id":    r["id"],
-            "title": title,
-            "date":  date,
-            "count": r.get("msg_count", 0),
+            "id":        r["id"],
+            "title":     title,
+            "date":      date,
+            "msg_count": r.get("msg_count", 0),   # ← padronizado
         })
     return result
 
 
 def _list_conversations_fallback(username: str, db: Client) -> list:
-    """Fallback para list_conversations sem RPC."""
     convs = (
         db.table("conversations")
         .select("id, created_at")
@@ -284,34 +278,37 @@ def _list_conversations_fallback(username: str, db: Client) -> list:
         )
         if not msgs:
             continue
-        count = (
+        count_resp = (
             db.table("messages")
             .select("id", count="exact")
             .eq("username", username)
             .eq("conv_id", c["id"])
             .eq("role", "user")
             .execute()
-            .count or 0
         )
+        count = count_resp.count or 0
         first = msgs[0]["content"]
         title = first[:45] + ("..." if len(first) > 45 else "")
         try:
             date = datetime.strptime(c["id"], "%Y%m%d_%H%M%S").strftime("%d/%m %H:%M")
         except Exception:
             date = c["id"][:13]
-        result.append({"id": c["id"], "title": title, "date": date, "count": count})
+        result.append({
+            "id":        c["id"],
+            "title":     title,
+            "date":      date,
+            "msg_count": count,   # ← padronizado
+        })
     return result
 
 
 def load_conversation(username: str, conv_id: str) -> list:
-    """Usa RPC para carregar conversa."""
     db = get_client()
     try:
         rows = db.rpc("load_conversation", {
             "p_username": username,
             "p_conv_id":  conv_id,
         }).execute().data or []
-        # Renomeia colunas que foram escapadas no SQL (time/date/timestamp são reservadas)
         for r in rows:
             if "msg_time" in r:
                 r["time"]      = r.pop("msg_time")
@@ -332,10 +329,8 @@ def load_conversation(username: str, conv_id: str) -> list:
 
 def append_message(username, conv_id, role, content,
                    audio=False, tts_b64=None, is_file=False):
-    """Usa RPC para inserir mensagem atomicamente."""
     now = datetime.now()
     db  = get_client()
-
     try:
         db.rpc("append_message", {
             "p_username":       username,
@@ -350,7 +345,6 @@ def append_message(username, conv_id, role, content,
             "p_msg_timestamp":  now.isoformat(),
         }).execute()
     except Exception:
-        # Fallback
         db.table("conversations").upsert(
             {"id": conv_id, "username": username, "created_at": now.isoformat()},
             on_conflict="id,username",
@@ -370,24 +364,18 @@ def append_message(username, conv_id, role, content,
         }).execute()
 
 
-# ── Avatar do usuário (Supabase Storage) ─────────────────────────────────────
+# ── Avatar do usuário (Supabase Storage) ──────────────────────────────────────
 
 AVATAR_BUCKET = "avatars"
 
-def _avatar_path(username: str, version: str = "") -> str:
-    """Gera o path do avatar no Storage. Versão muda a cada upload."""
-    if version:
-        return f"{username}/avatar_{version}"
-    return f"{username}/avatar"
 
 def save_user_avatar_db(username: str, raw: bytes, mime: str) -> bool:
-    """Salva foto de perfil no Supabase Storage com path versionado."""
     import time
     db      = get_client()
     version = str(int(time.time()))
-    path    = _avatar_path(username, version)
+    path    = f"{username}/avatar_{version}"
     try:
-        # Remove TODOS os arquivos de avatar antigos desse usuário
+        # Remove avatares antigos
         try:
             files = db.storage.from_(AVATAR_BUCKET).list(username)
             if files:
@@ -395,13 +383,13 @@ def save_user_avatar_db(username: str, raw: bytes, mime: str) -> bool:
                 db.storage.from_(AVATAR_BUCKET).remove(old_paths)
         except Exception:
             pass
-        # Faz upload com path novo (versão = timestamp)
+
         db.storage.from_(AVATAR_BUCKET).upload(
             path, raw,
             file_options={"content-type": mime, "upsert": "false"},
         )
-        # Salva a versão no profile do usuário para busca futura
-        row = db.table("users").select("profile").eq("username", username).execute().data
+
+        row     = db.table("users").select("profile").eq("username", username).execute().data
         profile = (row[0].get("profile") or {}) if row else {}
         profile["avatar_v"] = version
         db.table("users").update({"profile": profile}).eq("username", username).execute()
@@ -412,19 +400,23 @@ def save_user_avatar_db(username: str, raw: bytes, mime: str) -> bool:
 
 
 def get_user_avatar_db(username: str) -> tuple[bytes, str] | None:
-    """Retorna (bytes, mime) da foto do usuário usando path versionado."""
+    """
+    BUG CORRIGIDO: a variável 'path' não era construída antes do download.
+    Agora busca a versão no profile e constrói o path correto.
+    """
     db = get_client()
     try:
-        # Busca versão atual no profile
-        row = db.table("users").select("profile").eq("username", username).execute().data
+        row     = db.table("users").select("profile").eq("username", username).execute().data
         profile = (row[0].get("profile") or {}) if row else {}
         version = profile.get("avatar_v", "")
         if not version:
             return None
-        raw     = db.storage.from_(AVATAR_BUCKET).download(path)
+
+        path = f"{username}/avatar_{version}"   # ← BUG CORRIGIDO
+        raw  = db.storage.from_(AVATAR_BUCKET).download(path)
         if not raw:
             return None
-        # Detecta mime pelo header mágico
+
         mime = "image/jpeg"
         if raw[:4] == b"\x89PNG":
             mime = "image/png"
@@ -436,10 +428,8 @@ def get_user_avatar_db(username: str) -> tuple[bytes, str] | None:
 
 
 def remove_user_avatar_db(username: str) -> bool:
-    """Remove foto de perfil do Supabase Storage e limpa versão do profile."""
     db = get_client()
     try:
-        # Remove todos os arquivos de avatar
         try:
             files = db.storage.from_(AVATAR_BUCKET).list(username)
             if files:
@@ -447,8 +437,8 @@ def remove_user_avatar_db(username: str) -> bool:
                 db.storage.from_(AVATAR_BUCKET).remove(old_paths)
         except Exception:
             pass
-        # Limpa avatar_v do profile (seta string vazia para sobrescrever no banco)
-        row = db.table("users").select("profile").eq("username", username).execute().data
+
+        row     = db.table("users").select("profile").eq("username", username).execute().data
         profile = (row[0].get("profile") or {}) if row else {}
         profile["avatar_v"] = ""
         db.table("users").update({"profile": profile}).eq("username", username).execute()
@@ -458,23 +448,27 @@ def remove_user_avatar_db(username: str) -> bool:
         return False
 
 
-# ── Stats do professor ────────────────────────────────────────────────────────
+# ── Stats do professor ─────────────────────────────────────────────────────────
 
 def get_all_students_stats() -> list:
-    """Usa RPC — era loop Python com N queries, agora é 1 query."""
+    """
+    BUG CORRIGIDO: chave retornada era 'messages', mas show_dashboard lia 'total_messages'.
+    Agora padronizado como 'total_messages' em ambos os lugares.
+    """
     db = get_client()
     try:
         rows = db.rpc("get_students_stats").execute().data or []
         return [
             {
-                "username":    r["username"],
-                "name":        r["name"],
-                "level":       r["level"],
-                "focus":       r["focus"],
-                "messages":    r.get("total_msgs", 0),
-                "corrections": r.get("corrections", 0),
-                "last_active": r.get("last_active", "---"),
-                "created_at":  (r.get("created_at") or "")[:10],
+                "username":           r["username"],
+                "name":               r["name"],
+                "level":              r["level"],
+                "focus":              r["focus"],
+                "total_messages":     r.get("total_msgs", 0),    # ← padronizado
+                "total_conversations": r.get("total_convs", 0),  # ← padronizado
+                "corrections":        r.get("corrections", 0),
+                "last_activity":      r.get("last_active", "---"),
+                "created_at":         (r.get("created_at") or "")[:10],
             }
             for r in rows
         ]
@@ -483,7 +477,6 @@ def get_all_students_stats() -> list:
 
 
 def _get_students_stats_fallback(db: Client) -> list:
-    """Fallback para get_all_students_stats sem RPC."""
     students = load_students()
     result   = []
     for username, data in students.items():
@@ -498,6 +491,14 @@ def _get_students_stats_fallback(db: Client) -> list:
         )
         total = msgs.count or 0
 
+        convs = (
+            db.table("conversations")
+            .select("id", count="exact")
+            .eq("username", username)
+            .execute()
+        )
+        total_convs = convs.count or 0
+
         ai_msgs = (
             db.table("messages")
             .select("content")
@@ -506,8 +507,8 @@ def _get_students_stats_fallback(db: Client) -> list:
             .execute()
             .data or []
         )
-        correction_keywords = ["Quick check", "we say", "instead of", "should be", "Try saying"]
-        fixes = sum(1 for m in ai_msgs if any(kw in m["content"] for kw in correction_keywords))
+        kws  = ["Quick check", "we say", "instead of", "should be", "Try saying"]
+        fixes = sum(1 for m in ai_msgs if any(kw in m["content"] for kw in kws))
 
         last_row = (
             db.table("messages")
@@ -521,13 +522,14 @@ def _get_students_stats_fallback(db: Client) -> list:
         last = last_row[0]["date"] if last_row else "---"
 
         result.append({
-            "username":    username,
-            "name":        data["name"],
-            "level":       data["level"],
-            "focus":       data["focus"],
-            "messages":    total,
-            "corrections": fixes,
-            "last_active": last,
-            "created_at":  data["created_at"][:10],
+            "username":            username,
+            "name":                data["name"],
+            "level":               data["level"],
+            "focus":               data["focus"],
+            "total_messages":      total,        # ← padronizado
+            "total_conversations": total_convs,  # ← padronizado
+            "corrections":         fixes,
+            "last_activity":       last,
+            "created_at":          data["created_at"][:10],
         })
     return result
