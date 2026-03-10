@@ -140,7 +140,6 @@ body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"]{background
 section[data-testid="stMain"]>div,.main .block-container{padding:0!important;margin:0!important;overflow:hidden!important;max-height:100vh!important;}
 div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:0!important;padding:0!important;margin:0!important;}
 html,body{overflow:hidden!important;}
-[data-testid="stAudioInput"]{position:fixed!important;bottom:-999px!important;left:-9999px!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;}
 </style>""", unsafe_allow_html=True)
 
     conv_id = get_or_create_conv(username)
@@ -159,7 +158,18 @@ html,body{overflow:hidden!important;}
             ]
 
     # Processa áudio recebido — só 1 rerun após processar
-    _audio_key = f"voice_input_{st.session_state.audio_key}"
+    audio_val = st.audio_input(
+        " ", key=f"voice_input_{st.session_state.audio_key}",
+        label_visibility="collapsed",
+    )
+    if audio_val and audio_val != st.session_state.get("_vm_last_upload"):
+        st.session_state["_vm_last_upload"] = audio_val
+        for k in ["_vm_reply", "_vm_tts_b64", "_vm_user_said", "_vm_error"]:
+            st.session_state.pop(k, None)
+        with st.spinner(t("processing", lang)):
+            process_voice(audio_val.read(), conv_id)
+        st.session_state.audio_key += 1
+        st.rerun()
 
     # Estado atual
     reply   = st.session_state.get("_vm_reply",   "")
@@ -700,16 +710,3 @@ try{{
 }})();
 </script>
 </body></html>""", height=800, scrolling=False)
-    
-    audio_val = st.audio_input(
-        " ", key=f"voice_input_{st.session_state.audio_key}",
-        label_visibility="collapsed",
-    )
-    if audio_val and audio_val != st.session_state.get("_vm_last_upload"):
-        st.session_state["_vm_last_upload"] = audio_val
-        for k in ["_vm_reply", "_vm_tts_b64", "_vm_user_said", "_vm_error"]:
-            st.session_state.pop(k, None)
-        with st.spinner(t("processing", lang)):
-            process_voice(audio_val.read(), conv_id)
-        st.session_state.audio_key += 1
-        st.rerun()
