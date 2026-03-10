@@ -506,12 +506,24 @@ section[data-testid="stSidebar"] {
     left: 0 !important;
     margin-left: 0 !important;
 }
-/* Esconde botões nativos de colapsar/expandir sidebar */
+/* Padding interno da sidebar */
+section[data-testid="stSidebar"] > div:first-child {
+    padding: 0 12px 16px !important;
+}
+/* Esconde o botão « de colapsar e qualquer toggle nativo */
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"],
 button[aria-label="Close sidebar"],
-button[aria-label="Open sidebar"] {
+button[aria-label="Open sidebar"],
+[data-testid="stSidebar"] [data-testid="baseButton-headerNoPadding"] {
     display: none !important;
+}
+/* Remove gap excessivo entre elementos da sidebar */
+section[data-testid="stSidebar"] .stButton {
+    margin-bottom: 4px !important;
+}
+section[data-testid="stSidebar"] .block-container {
+    padding-top: 0 !important;
 }
 /* ---- Layout de páginas internas (settings, history, dashboard) ---- */
 .pav-page {
@@ -701,20 +713,18 @@ def show_sidebar() -> None:
 
     with st.sidebar:
         # Avatar do aluno + nome
-        uav_html = user_avatar_html(username, size=52, fallback_emoji="🎓")
+        uav_html = user_avatar_html(username, size=62, fallback_emoji="🎓")
 
         st.markdown(f"""
-<div style="display:flex;align-items:center;gap:10px;padding:16px 8px 12px;">
+<div style="display:flex;align-items:center;gap:12px;padding:24px 4px 16px;">
     {uav_html}
     <div>
-        <div style="font-weight:700;font-size:.95rem;color:#e6edf3;">{user.get('name','').split()[0]}</div>
-        <div style="font-size:.7rem;color:#f0a500;">&#9679; Online</div>
+        <div style="font-weight:700;font-size:1rem;color:#e6edf3;line-height:1.3;">{user.get('name','').split()[0]}</div>
+        <div style="font-size:.72rem;color:#f0a500;margin-top:2px;">&#9679; Online</div>
     </div>
 </div>
-<hr style="border:none;border-top:1px solid #1a2535;margin:0 0 10px;"/>
+<hr style="border:none;border-top:1px solid #1a2535;margin:0 0 14px;"/>
 """, unsafe_allow_html=True)
-
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
         # Navegação
         nav_items = [
@@ -749,14 +759,13 @@ def show_sidebar() -> None:
 
         # Info do aluno
         st.markdown(f"""
-<div style="padding:0 4px;font-size:.72rem;color:#4a5a6a;line-height:1.8;">
+<div style="padding:4px 4px 0;font-size:.72rem;color:#4a5a6a;line-height:2;">
     <b style="color:#8b949e;">{user.get('name','')}</b><br>
     {user.get('level','—')} &middot; {user.get('focus','—')}
 </div>
 """, unsafe_allow_html=True)
 
-        st.markdown("<div style='flex:1'></div>", unsafe_allow_html=True)
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
         # Sair
         if st.button("&#128682; " + t("logout", lang), use_container_width=True, key="sb_logout",
