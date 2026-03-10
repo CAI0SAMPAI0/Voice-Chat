@@ -521,29 +521,63 @@ body {
     min-height: 100vh;
     min-height: -webkit-fill-available;
 }
-/* ---- Sidebar — sempre visível e expandida ---- */
+/* ---- Sidebar base ---- */
 section[data-testid="stSidebar"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    transform: none !important;
+    background: #070c15 !important;
+    border-right: 1px solid #1a2535 !important;
     width: 260px !important;
     min-width: 260px !important;
     max-width: 260px !important;
-    background: #070c15 !important;
-    border-right: 1px solid #1a2535 !important;
-    position: relative !important;
-    left: 0 !important;
-    margin-left: 0 !important;
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1) !important;
+    z-index: 1000 !important;
 }
-/* Padding interno da sidebar — flex column p/ logout ficar no fundo */
+/* Sidebar fechada no mobile */
+@media (max-width: 768px) {
+    section[data-testid="stSidebar"] {
+        position: fixed !important;
+        top: 0 !important; left: 0 !important; bottom: 0 !important;
+        transform: translateX(-100%) !important;
+        z-index: 2000 !important;
+    }
+    section[data-testid="stSidebar"].pav-open {
+        transform: translateX(0) !important;
+        box-shadow: 4px 0 32px rgba(0,0,0,.7) !important;
+    }
+    /* Overlay escuro quando sidebar aberta */
+    .pav-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 1999;
+    }
+    .pav-overlay.pav-open { display: block; }
+}
+/* Desktop: sidebar sempre visível */
+@media (min-width: 769px) {
+    section[data-testid="stSidebar"] {
+        position: relative !important;
+        transform: none !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        left: 0 !important;
+    }
+    section[data-testid="stSidebar"].pav-hidden {
+        transform: translateX(-100%) !important;
+        position: absolute !important;
+    }
+    .pav-toggle-btn {
+        display: flex !important;
+    }
+}
+/* Padding interno da sidebar */
 section[data-testid="stSidebar"] > div:first-child {
     padding: 0 12px 16px !important;
     display: flex !important;
     flex-direction: column !important;
     min-height: 100vh !important;
 }
-/* Esconde o « e todos os toggles nativos da sidebar */
+/* Esconde todos os toggles nativos da sidebar */
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"],
 [data-testid="stSidebarHeader"],
@@ -559,6 +593,43 @@ section[data-testid="stSidebar"] .stButton {
 section[data-testid="stSidebar"] .block-container {
     padding-top: 0 !important;
 }
+/* ---- Botão hambúrguer customizado ---- */
+.pav-toggle-btn {
+    position: fixed;
+    top: 12px; left: 12px;
+    z-index: 3000;
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: #0f1824;
+    border: 1px solid #1a2535;
+    display: flex;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4);
+    transition: background .2s;
+}
+.pav-toggle-btn:hover { background: #1a2535; }
+.pav-toggle-btn span {
+    display: block; width: 18px; height: 2px;
+    background: #e6edf3; border-radius: 2px;
+    position: relative;
+    transition: all .25s;
+}
+.pav-toggle-btn span::before,
+.pav-toggle-btn span::after {
+    content: ''; position: absolute; left: 0;
+    width: 18px; height: 2px;
+    background: #e6edf3; border-radius: 2px;
+    transition: all .25s;
+}
+.pav-toggle-btn span::before { top: -5px; }
+.pav-toggle-btn span::after  { top: 5px; }
+/* Anima para X quando aberto */
+.pav-toggle-btn.pav-open span { background: transparent; }
+.pav-toggle-btn.pav-open span::before { top: 0; transform: rotate(45deg); }
+.pav-toggle-btn.pav-open span::after  { top: 0; transform: rotate(-45deg); }
+/* Empurra o conteúdo principal para não ficar atrás do botão */
+.pav-page { padding-left: 3.5rem !important; }
 /* ---- Layout de páginas internas (settings, history, dashboard) ---- */
 .pav-page {
     padding: 1.5rem 2rem;
@@ -569,6 +640,15 @@ div[data-testid="stButton"] > button {
     border-radius: 12px !important;
     font-weight: 600 !important;
     transition: all .2s !important;
+}
+/* ---- Botão "Abrir conversa" no histórico — invisível mas clicável sobre o card ---- */
+[data-testid="stButton"]:has(button[kind="secondary"]) button[kind="secondary"].hist-open-btn,
+.hist-open-overlay button {
+    position: absolute !important;
+    inset: 0 !important; width: 100% !important; height: 100% !important;
+    opacity: 0 !important; cursor: pointer !important;
+    z-index: 10 !important; border: none !important;
+    background: transparent !important;
 }
 /* ---- Scrollbar ---- */
 ::-webkit-scrollbar { width: 4px; }
@@ -744,6 +824,64 @@ def show_sidebar() -> None:
     profile  = user.get("profile", {})
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
+
+    # Injeta botão hambúrguer + overlay + lógica de toggle via JS
+    components.html("""<!DOCTYPE html><html><head>
+<style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
+</head><body><script>
+(function(){
+    function init(){
+        var doc = window.parent.document;
+        // Não duplica
+        if(doc.getElementById('pav-ham')) return;
+
+        // Overlay
+        var ov = doc.createElement('div');
+        ov.id = 'pav-overlay';
+        ov.className = 'pav-overlay';
+        doc.body.appendChild(ov);
+
+        // Botão hambúrguer
+        var btn = doc.createElement('button');
+        btn.id = 'pav-ham';
+        btn.className = 'pav-toggle-btn';
+        btn.setAttribute('aria-label','Menu');
+        btn.innerHTML = '<span></span>';
+        doc.body.appendChild(btn);
+
+        var sidebar = doc.querySelector('section[data-testid="stSidebar"]');
+
+        function open(){
+            btn.classList.add('pav-open');
+            ov.classList.add('pav-open');
+            if(sidebar) sidebar.classList.add('pav-open');
+        }
+        function close(){
+            btn.classList.remove('pav-open');
+            ov.classList.remove('pav-open');
+            if(sidebar) sidebar.classList.remove('pav-open');
+        }
+        function toggle(){ btn.classList.contains('pav-open') ? close() : open(); }
+
+        btn.addEventListener('click', toggle);
+        ov.addEventListener('click', close);
+
+        // Fecha ao clicar em item de nav da sidebar (no mobile)
+        if(sidebar){
+            sidebar.addEventListener('click', function(e){
+                var isMobile = window.parent.innerWidth <= 768;
+                if(isMobile && e.target && e.target.tagName === 'BUTTON'){
+                    setTimeout(close, 150);
+                }
+            });
+        }
+    }
+    // Tenta de imediato e também após DOM estar pronto
+    if(document.readyState === 'complete'){ init(); } else { window.addEventListener('load', init); }
+    setTimeout(init, 300);
+    setTimeout(init, 800);
+})();
+</script></body></html>""", height=0)
 
     with st.sidebar:
         # Avatar do aluno + nome
@@ -1694,14 +1832,112 @@ section[data-testid="stMain"]>div,.main .block-container,section[data-testid="st
 div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:revert!important;}
 </style>""", unsafe_allow_html=True)
 
-    st.markdown("<div class='pav-page'>", unsafe_allow_html=True)
-    st.markdown(f"<h2 style='color:#e6edf3;margin-bottom:1rem;'>&#128196; {t('history',lang)}</h2>",
-                unsafe_allow_html=True)
+    st.markdown("""<style>
+/* ---- History cards ---- */
+.hist-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 0 1.2rem; margin-bottom: 1rem;
+    border-bottom: 1px solid #1a2535;
+}
+.hist-header h2 { margin: 0; font-size: 1.4rem; color: #e6edf3; font-weight: 700; }
+.hist-count {
+    background: #1a2535; color: #8b949e;
+    font-size: .7rem; padding: 3px 10px;
+    border-radius: 20px; margin-left: auto;
+}
+.hist-card {
+    display: flex; align-items: center; gap: 0;
+    background: #0d1420;
+    border: 1px solid #1a2535;
+    border-radius: 14px;
+    margin-bottom: 2px;
+    overflow: hidden;
+    transition: border-color .18s, box-shadow .18s;
+}
+.hist-card:hover { border-color: #f0a50044; box-shadow: 0 2px 16px rgba(240,165,0,.07); }
+.hist-card-icon {
+    flex-shrink: 0; width: 48px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; color: #f0a500; padding: 0 4px;
+    align-self: stretch;
+    border-right: 1px solid #1a2535;
+    background: #0a1020;
+}
+.hist-card-body {
+    flex: 1; padding: 12px 14px; min-width: 0;
+}
+.hist-card-title {
+    font-size: .88rem; font-weight: 600; color: #e6edf3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 5px;
+}
+.hist-card-meta {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+.hist-meta-item {
+    display: flex; align-items: center; gap: 4px;
+    font-size: .68rem; color: #4a5a6a;
+}
+.hist-meta-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #1a2535; flex-shrink: 0;
+}
+/* Botão "Abrir conversa" — aparência de link discreto abaixo do card */
+.hist-open-row button, .hist-open-row [data-testid="stButton"] > button {
+    background: transparent !important;
+    border: none !important;
+    color: #3a6a8a !important;
+    font-size: .72rem !important;
+    font-weight: 400 !important;
+    padding: 2px 4px 8px 4px !important;
+    margin-top: -4px !important;
+    text-align: left !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    min-height: unset !important;
+    height: auto !important;
+}
+.hist-open-row button:hover, .hist-open-row [data-testid="stButton"] > button:hover {
+    color: #f0a500 !important;
+    background: transparent !important;
+}
+/* Botão deletar — pequeno e discreto */
+.hist-del-row button, .hist-del-row [data-testid="stButton"] > button {
+    background: transparent !important;
+    border: 1px solid #1a2535 !important;
+    color: #3a4e5e !important;
+    font-size: .85rem !important;
+    padding: 4px 8px !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    min-height: unset !important;
+    height: 32px !important;
+    width: 32px !important;
+    margin-top: 4px !important;
+}
+.hist-del-row button:hover, .hist-del-row [data-testid="stButton"] > button:hover {
+    color: #e05c2a !important;
+    border-color: rgba(224,92,42,.4) !important;
+    background: rgba(224,92,42,.08) !important;
+}
+</style>""", unsafe_allow_html=True)
 
     convs = list_conversations(username)
+
+    st.markdown(f"""
+<div class="pav-page">
+<div class="hist-header">
+    <h2>&#128196; {t('history', lang)}</h2>
+    {"<span class='hist-count'>" + str(len(convs)) + " conversas</span>" if convs else ""}
+</div>
+</div>""", unsafe_allow_html=True)
+
     if not convs:
-        st.markdown(f"<p style='color:#4a5a6a;'>{t('no_history',lang)}</p>",
-                    unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='padding:2rem 2rem;color:#4a5a6a;font-size:.9rem;'>"
+            f"&#128172; {t('no_history', lang)}</div>",
+            unsafe_allow_html=True)
         return
 
     for conv in convs:
@@ -1710,32 +1946,52 @@ div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper
         date_ = conv.get("updated_at","") or conv.get("created_at","")
         msgs  = conv.get("msg_count", 0)
 
-        c1, c2 = st.columns([5, 1])
-        with c1:
-            if st.button(
-                f"&#9654; {title[:45]}{'...' if len(title)>45 else ''}",
-                key=f"conv_{cid}", use_container_width=True,
-            ):
-                st.session_state.conv_id    = cid
-                st.session_state["_vm_history"] = []
-                st.session_state["_vm_reply"]   = ""
+        # Formata data
+        date_fmt = "---"
+        if date_:
+            try:
+                from datetime import datetime as _dt
+                _d = _dt.fromisoformat(date_[:19])
+                date_fmt = _d.strftime("%d/%m/%Y %H:%M")
+            except Exception:
+                date_fmt = date_[:16]
+
+        # Card com botão de abrir (col larga) + botão deletar (col estreita)
+        col_open, col_del = st.columns([12, 1])
+
+        with col_open:
+            st.markdown(f"""
+<div class="hist-card">
+    <div class="hist-card-icon">&#127908;</div>
+    <div class="hist-card-body">
+        <div class="hist-card-title">{title[:70]}{'…' if len(title)>70 else ''}</div>
+        <div class="hist-card-meta">
+            <div class="hist-meta-item">&#128197; {date_fmt}</div>
+            <div class="hist-meta-dot"></div>
+            <div class="hist-meta-item">&#128172; {msgs} msg{'s' if msgs != 1 else ''}</div>
+        </div>
+    </div>
+</div>
+<div class="hist-open-row">""", unsafe_allow_html=True)
+            if st.button("▶ Abrir conversa", key=f"conv_{cid}", help=title):
+                st.session_state.conv_id         = cid
+                st.session_state["_vm_history"]  = []
+                st.session_state["_vm_reply"]    = ""
                 st.session_state["_vm_user_said"] = ""
-                st.session_state.page       = "voice"
+                st.session_state.page            = "voice"
                 st.rerun()
-            st.markdown(
-                f"<div style='font-size:.65rem;color:#3a4e5e;margin-top:-6px;padding-left:4px;'>"
-                f"&#128197; {date_[:16] if date_ else '---'} &middot; {msgs} msg</div>",
-                unsafe_allow_html=True,
-            )
-        with c2:
-            if st.button("&#128465;", key=f"del_{cid}", help=t("del_conv",lang)):
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_del:
+            st.markdown("<div class='hist-del-row' style='padding-top:8px;'>", unsafe_allow_html=True)
+            if st.button("🗑", key=f"del_{cid}", help=t("del_conv", lang)):
                 delete_conversation(username, cid)
                 if st.session_state.conv_id == cid:
                     st.session_state.conv_id = None
                 st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown("<hr style='border:none;border-top:1px solid #1a2535;margin:4px 0;'/>",
-                    unsafe_allow_html=True)
+        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
 # =============================================================================
 # DASHBOARD (professor)
