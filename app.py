@@ -521,14 +521,35 @@ body {
     min-height: 100vh;
     min-height: -webkit-fill-available;
 }
-/* ---- Sidebar base ---- */
+/* ---- Sidebar — sempre presente no DOM, nunca colapsada pelo Streamlit ---- */
+/* Esconde os controles nativos de colapso para nunca disparar o collapse do Streamlit */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"],
+[data-testid="stSidebarHeader"],
+button[aria-label="Close sidebar"],
+button[aria-label="Open sidebar"],
+[data-testid="stSidebar"] [data-testid="baseButton-headerNoPadding"] {
+    display: none !important;
+}
+/* Sidebar base — sempre visível, posição esquerda padrão */
 section[data-testid="stSidebar"] {
     background: #070c15 !important;
     border-right: 1px solid #1a2535 !important;
     width: 260px !important;
     min-width: 260px !important;
     max-width: 260px !important;
-    transition: all 0.28s cubic-bezier(.4,0,.2,1) !important;
+    overflow: hidden !important;
+    /* Transição suave de abertura/fechamento */
+    transition: width 0.28s cubic-bezier(.4,0,.2,1),
+                min-width 0.28s cubic-bezier(.4,0,.2,1),
+                opacity 0.28s ease !important;
+    flex-shrink: 0 !important;
+}
+/* Classe adicionada pelo JS quando sidebar está fechada */
+section[data-testid="stSidebar"].pav-sb-closed {
+    width: 0px !important;
+    min-width: 0px !important;
+    opacity: 0 !important;
 }
 /* Padding interno da sidebar */
 section[data-testid="stSidebar"] > div:first-child {
@@ -536,38 +557,36 @@ section[data-testid="stSidebar"] > div:first-child {
     display: flex !important;
     flex-direction: column !important;
     min-height: 100vh !important;
+    width: 260px !important; /* mantém largura interna mesmo ao colapsar */
 }
 /* Remove gap excessivo entre elementos da sidebar */
 section[data-testid="stSidebar"] .stButton { margin-bottom: 4px !important; }
 section[data-testid="stSidebar"] .block-container { padding-top: 0 !important; }
-
-/* Esconde APENAS os controles visuais nativos do Streamlit — mantemos o botão de colapso funcional mas invisível */
-[data-testid="stSidebarHeader"] { min-height: 0 !important; padding: 0 !important; overflow: hidden !important; height: 0 !important; }
-[data-testid="stSidebarCollapsedControl"] { opacity: 0 !important; pointer-events: none !important; }
-
-/* ---- Botão customizado de seta — delegará click ao botão nativo ---- */
-#pav-toggle-custom {
-    position: fixed;
-    top: 12px; left: 268px;
-    z-index: 3000;
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    background: #0f1824;
-    border: 1px solid #1a2535;
+/* ---- Botão de seta customizado ---- */
+#pav-sb-btn {
+    position: fixed !important;
+    top: 12px !important;
+    left: 268px !important;  /* logo depois da sidebar quando aberta */
+    z-index: 9999 !important;
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 50% !important;
+    background: #0f1824 !important;
+    border: 1px solid #1a2535 !important;
+    color: #e6edf3 !important;
+    font-size: 11px !important;
+    cursor: pointer !important;
     display: flex !important;
-    align-items: center; justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,.5);
-    transition: background .2s, left .28s cubic-bezier(.4,0,.2,1);
-    color: #e6edf3;
-    font-size: 11px;
-    line-height: 1;
-    user-select: none;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.6) !important;
+    transition: left 0.28s cubic-bezier(.4,0,.2,1), background .15s !important;
+    user-select: none !important;
+    line-height: 1 !important;
 }
-#pav-toggle-custom:hover { background: #1a2535; }
+#pav-sb-btn:hover { background: #1a2535 !important; }
 /* Quando sidebar fechada, botão vai para a esquerda */
-#pav-toggle-custom.sidebar-closed { left: 8px !important; }
-
+#pav-sb-btn.pav-closed { left: 8px !important; }
 /* ---- Layout de páginas internas (settings, history, dashboard) ---- */
 .pav-page {
     padding: 1.5rem 2rem;
@@ -763,69 +782,70 @@ def show_sidebar() -> None:
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
 
-    # Injeta botão customizado que DELEGA o click ao botão nativo do Streamlit.
-    # Isso sobrevive a reruns porque o Streamlit gerencia o estado do sidebar nativamente.
+    # Injeta botão customizado que controla a sidebar via CSS class (width:0).
+    # O estado é salvo no sessionStorage do parent para sobreviver a reruns.
+    # NUNCA toca nos botões nativos do Streamlit para não disparar collapse real.
     components.html("""<!DOCTYPE html><html><head>
 <style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
 </head><body><script>
 (function(){
+    var OPEN_KEY = 'pav_sb_open';
+
+    function getDoc(){ return window.parent ? window.parent.document : document; }
+    function getSb(doc){ return doc.querySelector('section[data-testid="stSidebar"]'); }
+
+    function isOpen(){
+        try{ return window.parent.sessionStorage.getItem(OPEN_KEY) !== 'false'; }
+        catch(e){ return true; }
+    }
+    function setOpen(v){
+        try{ window.parent.sessionStorage.setItem(OPEN_KEY, v ? 'true' : 'false'); }
+        catch(e){}
+    }
+
+    function apply(doc){
+        var sb  = getSb(doc);
+        var btn = doc.getElementById('pav-sb-btn');
+        if(!sb || !btn) return;
+        if(isOpen()){
+            sb.classList.remove('pav-sb-closed');
+            btn.classList.remove('pav-closed');
+            btn.textContent = '◀';
+            btn.title = 'Fechar menu';
+        } else {
+            sb.classList.add('pav-sb-closed');
+            btn.classList.add('pav-closed');
+            btn.textContent = '▶';
+            btn.title = 'Abrir menu';
+        }
+    }
+
     function init(){
-        var doc = window.parent.document;
-        if(doc.getElementById('pav-toggle-custom')) return;
-
+        var doc = getDoc();
+        // Não duplica o botão
+        if(doc.getElementById('pav-sb-btn')){
+            apply(doc);
+            return;
+        }
         var btn = doc.createElement('button');
-        btn.id = 'pav-toggle-custom';
+        btn.id = 'pav-sb-btn';
         doc.body.appendChild(btn);
-
-        function isSidebarOpen(){
-            var sb = doc.querySelector('section[data-testid="stSidebar"]');
-            if(!sb) return false;
-            // Streamlit adiciona aria-expanded ou width colapsa — checamos o estilo computado
-            var w = sb.getBoundingClientRect().width;
-            return w > 50;
-        }
-
-        function updateBtn(){
-            var open = isSidebarOpen();
-            btn.textContent = open ? '◀' : '▶';
-            btn.style.left  = open ? '268px' : '8px';
-            btn.title       = open ? 'Fechar menu' : 'Abrir menu';
-        }
-
-        function clickNativeBtn(){
-            // Tenta o botão de fechar (dentro da sidebar)
-            var closeBtn = doc.querySelector('button[aria-label="Close sidebar"]');
-            // Tenta o botão de abrir (collapsed control)
-            var openBtn  = doc.querySelector('[data-testid="stSidebarCollapsedControl"] button')
-                        || doc.querySelector('[data-testid="collapsedControl"] button');
-            var target = isSidebarOpen() ? closeBtn : openBtn;
-            if(target){
-                target.click();
-            }
-        }
 
         btn.addEventListener('click', function(e){
             e.stopPropagation();
-            clickNativeBtn();
-            // Atualiza visual após a animação
-            setTimeout(updateBtn, 350);
+            setOpen(!isOpen());
+            apply(doc);
         });
 
-        // Observa mudanças na sidebar (rerun, resize) para manter seta correta
-        var obs = new MutationObserver(updateBtn);
-        var sb  = doc.querySelector('section[data-testid="stSidebar"]');
-        if(sb) obs.observe(sb, {attributes:true, attributeFilter:['style','class']});
-        obs.observe(doc.body, {childList:true, subtree:false});
-
-        updateBtn();
-        // Re-aplica após reruns do Streamlit
-        setInterval(updateBtn, 800);
+        apply(doc);
     }
 
+    // Roda imediatamente e após cada rerun do Streamlit
     if(document.readyState === 'complete'){ init(); }
     else { window.addEventListener('load', init); }
-    setTimeout(init, 200);
-    setTimeout(init, 600);
+    setTimeout(init, 100);
+    setTimeout(init, 500);
+    setTimeout(init, 1200);
 })();
 </script></body></html>""", height=0)
 
