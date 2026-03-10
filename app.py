@@ -521,27 +521,36 @@ body {
     min-height: 100vh;
     min-height: -webkit-fill-available;
 }
-/* ---- Sidebar base ---- */
+/* ---- Sidebar base — posicionada à DIREITA ---- */
 section[data-testid="stSidebar"] {
     background: #070c15 !important;
-    border-right: 1px solid #1a2535 !important;
+    border-left: 1px solid #1a2535 !important;
+    border-right: none !important;
     width: 260px !important;
     min-width: 260px !important;
     max-width: 260px !important;
     transition: transform 0.28s cubic-bezier(.4,0,.2,1) !important;
     z-index: 1000 !important;
+    /* Move para a direita */
+    order: 999 !important;
 }
-/* Sidebar fechada no mobile */
+/* Força o layout principal a usar flex row-reverse para sidebar à direita */
+.stApp > div:first-child,
+[data-testid="stAppViewContainer"] {
+    flex-direction: row-reverse !important;
+    display: flex !important;
+}
+/* Sidebar fechada no mobile — desliza da DIREITA */
 @media (max-width: 768px) {
     section[data-testid="stSidebar"] {
         position: fixed !important;
-        top: 0 !important; left: 0 !important; bottom: 0 !important;
-        transform: translateX(-100%) !important;
+        top: 0 !important; right: 0 !important; left: auto !important; bottom: 0 !important;
+        transform: translateX(100%) !important;
         z-index: 2000 !important;
     }
     section[data-testid="stSidebar"].pav-open {
         transform: translateX(0) !important;
-        box-shadow: 4px 0 32px rgba(0,0,0,.7) !important;
+        box-shadow: -4px 0 32px rgba(0,0,0,.7) !important;
     }
     /* Overlay escuro quando sidebar aberta */
     .pav-overlay {
@@ -552,7 +561,7 @@ section[data-testid="stSidebar"] {
     }
     .pav-overlay.pav-open { display: block; }
 }
-/* Desktop: sidebar sempre visível */
+/* Desktop: sidebar sempre visível à direita */
 @media (min-width: 769px) {
     section[data-testid="stSidebar"] {
         position: relative !important;
@@ -560,10 +569,11 @@ section[data-testid="stSidebar"] {
         display: flex !important;
         visibility: visible !important;
         opacity: 1 !important;
-        left: 0 !important;
+        right: 0 !important;
+        left: auto !important;
     }
     section[data-testid="stSidebar"].pav-hidden {
-        transform: translateX(-100%) !important;
+        transform: translateX(100%) !important;
         position: absolute !important;
     }
     .pav-toggle-btn {
@@ -593,10 +603,10 @@ section[data-testid="stSidebar"] .stButton {
 section[data-testid="stSidebar"] .block-container {
     padding-top: 0 !important;
 }
-/* ---- Botão hambúrguer customizado ---- */
+/* ---- Botão de seta customizado (substituindo hambúrguer) — canto DIREITO ---- */
 .pav-toggle-btn {
     position: fixed;
-    top: 12px; left: 12px;
+    top: 12px; right: 12px; left: auto !important;
     z-index: 3000;
     width: 40px; height: 40px;
     border-radius: 10px;
@@ -607,29 +617,26 @@ section[data-testid="stSidebar"] .block-container {
     cursor: pointer;
     box-shadow: 0 2px 12px rgba(0,0,0,.4);
     transition: background .2s;
+    font-size: 18px;
+    color: #e6edf3;
+    user-select: none;
 }
 .pav-toggle-btn:hover { background: #1a2535; }
-.pav-toggle-btn span {
-    display: block; width: 18px; height: 2px;
-    background: #e6edf3; border-radius: 2px;
-    position: relative;
-    transition: all .25s;
+/* Seta aponta para ESQUERDA (abre sidebar à direita) */
+.pav-toggle-btn::after {
+    content: '◀';
+    transition: transform .25s;
+    display: block;
+    line-height: 1;
 }
-.pav-toggle-btn span::before,
-.pav-toggle-btn span::after {
-    content: ''; position: absolute; left: 0;
-    width: 18px; height: 2px;
-    background: #e6edf3; border-radius: 2px;
-    transition: all .25s;
+/* Quando aberta, seta aponta para DIREITA (fecha) */
+.pav-toggle-btn.pav-open::after {
+    content: '▶';
 }
-.pav-toggle-btn span::before { top: -5px; }
-.pav-toggle-btn span::after  { top: 5px; }
-/* Anima para X quando aberto */
-.pav-toggle-btn.pav-open span { background: transparent; }
-.pav-toggle-btn.pav-open span::before { top: 0; transform: rotate(45deg); }
-.pav-toggle-btn.pav-open span::after  { top: 0; transform: rotate(-45deg); }
-/* Empurra o conteúdo principal para não ficar atrás do botão */
-.pav-page { padding-left: 3.5rem !important; }
+/* Remove o <span> antigo do hambúrguer */
+.pav-toggle-btn span { display: none !important; }
+/* Empurra o conteúdo principal para não ficar atrás do botão — agora à direita */
+.pav-page { padding-right: 3.5rem !important; padding-left: 0 !important; }
 /* ---- Layout de páginas internas (settings, history, dashboard) ---- */
 .pav-page {
     padding: 1.5rem 2rem;
@@ -825,7 +832,7 @@ def show_sidebar() -> None:
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
 
-    # Injeta botão hambúrguer + overlay + lógica de toggle via JS
+    # Injeta botão de seta (direita) + overlay + lógica de toggle/close via JS
     components.html("""<!DOCTYPE html><html><head>
 <style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
 </head><body><script>
@@ -841,12 +848,12 @@ def show_sidebar() -> None:
         ov.className = 'pav-overlay';
         doc.body.appendChild(ov);
 
-        // Botão hambúrguer
+        // Botão de seta — posicionado no canto DIREITO via CSS
         var btn = doc.createElement('button');
         btn.id = 'pav-ham';
         btn.className = 'pav-toggle-btn';
         btn.setAttribute('aria-label','Menu');
-        btn.innerHTML = '<span></span>';
+        // O ícone de seta é injetado via CSS ::after — não precisa de innerHTML
         doc.body.appendChild(btn);
 
         var sidebar = doc.querySelector('section[data-testid="stSidebar"]');
@@ -863,7 +870,13 @@ def show_sidebar() -> None:
         }
         function toggle(){ btn.classList.contains('pav-open') ? close() : open(); }
 
-        btn.addEventListener('click', toggle);
+        // Clique no botão: abre OU fecha corretamente
+        btn.addEventListener('click', function(e){
+            e.stopPropagation();
+            toggle();
+        });
+
+        // Clique no overlay fecha a sidebar
         ov.addEventListener('click', close);
 
         // Fecha ao clicar em item de nav da sidebar (no mobile)
@@ -873,6 +886,15 @@ def show_sidebar() -> None:
                 if(isMobile && e.target && e.target.tagName === 'BUTTON'){
                     setTimeout(close, 150);
                 }
+            });
+        }
+
+        // Garante que o botão nativo de fechar do Streamlit não interfira
+        var nativeClose = doc.querySelector('button[aria-label="Close sidebar"]');
+        if(nativeClose){
+            nativeClose.addEventListener('click', function(e){
+                e.stopPropagation();
+                close();
             });
         }
     }
@@ -1882,25 +1904,33 @@ div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper
     width: 5px; height: 5px; border-radius: 50%;
     background: #1a2535; flex-shrink: 0;
 }
-/* Botão "Abrir conversa" — aparência de link discreto abaixo do card */
+/* Botão "Abrir conversa" — aparência de link discreto abaixo do card, com espaçamento adequado */
+.hist-open-row {
+    margin-top: 6px !important;
+    margin-bottom: 4px !important;
+    padding-left: 2px !important;
+}
 .hist-open-row button, .hist-open-row [data-testid="stButton"] > button {
     background: transparent !important;
-    border: none !important;
+    border: 1px solid #1a2535 !important;
     color: #3a6a8a !important;
-    font-size: .72rem !important;
-    font-weight: 400 !important;
-    padding: 2px 4px 8px 4px !important;
-    margin-top: -4px !important;
+    font-size: .75rem !important;
+    font-weight: 500 !important;
+    padding: 5px 12px !important;
+    margin-top: 0 !important;
     text-align: left !important;
     box-shadow: none !important;
-    border-radius: 0 !important;
+    border-radius: 8px !important;
     width: auto !important;
-    min-height: unset !important;
+    min-height: 30px !important;
     height: auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 .hist-open-row button:hover, .hist-open-row [data-testid="stButton"] > button:hover {
     color: #f0a500 !important;
-    background: transparent !important;
+    background: rgba(240,165,0,.08) !important;
+    border-color: rgba(240,165,0,.3) !important;
 }
 /* Botão deletar — pequeno e discreto */
 .hist-del-row button, .hist-del-row [data-testid="stButton"] > button {
@@ -1991,10 +2021,7 @@ div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
-# =============================================================================
-# DASHBOARD (professor)
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 # =============================================================================
 def show_dashboard() -> None:
     user    = st.session_state.user
