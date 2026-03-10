@@ -246,7 +246,7 @@ html,body{{background:#060a10;font-family:'Sora',sans-serif;height:100%;overflow
 
 /* ── Histórico de bolhas ── */
 .history-wrap{{
-    width:100%;max-width:1100px;
+    width:100%;max-width:1900px;
     flex:1;min-height:0;
     overflow-y:auto;display:flex;flex-direction:column;gap:8px;
     padding:8px 4px;
