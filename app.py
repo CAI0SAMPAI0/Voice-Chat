@@ -95,6 +95,12 @@ _STRINGS = {
         "section_learning":   "🎓 Perfil de Aprendizado",
         "section_lang":       "🌐 Idioma da Interface",
         "reload_lang":        "Salvo! Recarregue para ver o novo idioma.",
+        # Aparência
+        "section_appearance": "🎨 Aparência",
+        "ring_color":         "Cor do anel da professora",
+        "user_bubble_color":  "Cor da sua bolha",
+        "bot_bubble_color":   "Cor da bolha da IA",
+        "appearance_hint":    "As cores aparecem imediatamente no modo conversa.",
     },
     "en-US": {
         "username":           "Username",
@@ -149,6 +155,12 @@ _STRINGS = {
         "section_learning":   "🎓 Learning Profile",
         "section_lang":       "🌐 Interface Language",
         "reload_lang":        "Saved! Reload to see the new language.",
+        # Appearance
+        "section_appearance": "🎨 Appearance",
+        "ring_color":         "Professor ring colour",
+        "user_bubble_color":  "Your bubble colour",
+        "bot_bubble_color":   "AI bubble colour",
+        "appearance_hint":    "Colours apply instantly in conversation mode.",
     },
     "en-UK": {
         "username":           "Username",
@@ -203,6 +215,12 @@ _STRINGS = {
         "section_learning":   "🎓 Learning Profile",
         "section_lang":       "🌐 Interface Language",
         "reload_lang":        "Saved! Reload to see the new language.",
+        # Appearance
+        "section_appearance": "🎨 Appearance",
+        "ring_color":         "Professor ring colour",
+        "user_bubble_color":  "Your bubble colour",
+        "bot_bubble_color":   "AI bubble colour",
+        "appearance_hint":    "Colours apply instantly in conversation mode.",
     },
 }
 
@@ -360,15 +378,15 @@ def user_avatar_html(username: str, size: int = 36, **_) -> str:
     return _avatar_circle_html(_get_avatar(username), size)
 
 def avatar_html(size: int = 52, speaking: bool = False) -> str:
-    """Avatar da professora com anel de 'speaking' animado."""
+    """Avatar da professora — background-image evita flash do <img>."""
     cls   = "speaking" if speaking else ""
-    photo = PHOTO_B64  # usa cache — evita re-leitura e flash
+    photo = PHOTO_B64
     if photo:
         return (
-            f'<div class="avatar-wrap {cls}" style="width:{size}px;height:{size}px;'
-            f'overflow:hidden;border-radius:50%;">'
-            f'<img src="{photo}" class="avatar-img" style="width:100%;height:100%;'
-            f'object-fit:cover;object-position:top;display:block;"/>'
+            f'<div class="avatar-wrap {cls}" style="'
+            f'width:{size}px;height:{size}px;border-radius:50%;flex-shrink:0;'
+            f'background:url({photo}) center top/cover no-repeat;'
+            f'position:relative;overflow:hidden;">'
             f'<div class="avatar-ring"></div></div>'
         )
     return (
@@ -431,6 +449,8 @@ def _logout():
         del st.session_state[k]
     for k, v in _DEFAULTS.items():
         st.session_state[k] = v
+    # garante que próximo login salva o token novamente
+    st.session_state.pop("_session_saved", None)
 
 def js_save_session(token: str) -> None:
     """Salva token no localStorage E no cookie (max-age 30 dias)."""
@@ -557,7 +577,7 @@ h2{{font-size:1.4rem;font-weight:800;text-align:center;margin:0 0 4px;
 p{{font-size:.72rem;color:#3a4e5e;text-align:center;}}
 </style></head><body>
 <div class="wrap"><div class="card">
-    {"<img class='av' src='" + photo_src + "'/>" if photo_src else "<div class='av-emoji'>&#129489;&#8205;&#127979;</div>"}
+    {('<div class="av" style="background:url('+photo_src+') center top/cover no-repeat;width:84px;height:84px;border-radius:50%;display:block;margin:0 auto 14px;border:2.5px solid #f0a500;box-shadow:0 0 0 6px rgba(240,165,0,.1),0 0 32px rgba(240,165,0,.2);"></div>') if photo_src else "<div class=\'av-emoji\'>&#129489;&#8205;&#127979;</div>"}
     <h2>{PROF_NAME}</h2>
     <p>Voice English Coach</p>
 </div></div>
@@ -605,6 +625,7 @@ p{{font-size:.72rem;color:#3a4e5e;text-align:center;}}
                             )
                             token = create_session(real_u)
                             st.session_state["_session_token"] = token
+                            st.session_state["_session_saved"] = True
                             js_save_session(token)
                             st.rerun()
                         else:
@@ -777,6 +798,17 @@ def show_voice() -> None:
     lang     = profile.get("language", "pt-BR")
     speech_lang = profile.get("speech_lang", "en-US")
 
+    # Cores personalizadas do usuário
+    ring_color       = profile.get("ring_color",        "#f0a500")
+    user_bubble_color = profile.get("user_bubble_color", "#2d6a4f")
+    bot_bubble_color  = profile.get("bot_bubble_color",  "#1a1f2e")
+
+    def _rgba(hex_color: str, alpha: float) -> str:
+        h = hex_color.lstrip("#")
+        if len(h) == 3: h = h[0]*2 + h[1]*2 + h[2]*2
+        r, g, b = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
+        return f"rgba({r},{g},{b},{alpha})"
+
     conv_id = get_or_create_conv(username)
 
     # Carrega histórico do banco se _vm_history estiver vazio (ex: ao abrir conversa do histórico)
@@ -863,32 +895,32 @@ html,body{{
 }}
 .avatar-ring{{
     position:absolute;inset:-8px;border-radius:50%;
-    border:2px solid rgba(240,165,0,.3);
+    border:2px solid {_rgba(ring_color,.3)};
     animation:ring-pulse 2s ease-in-out infinite;
 }}
 .avatar-ring.active{{
-    border-color:#f0a500;
-    box-shadow:0 0 0 0 rgba(240,165,0,.5);
+    border-color:{ring_color};
+    box-shadow:0 0 0 0 {_rgba(ring_color,.5)};
     animation:ring-glow 1s ease-in-out infinite;
 }}
 @keyframes ring-pulse{{0%,100%{{opacity:.4;transform:scale(1);}}50%{{opacity:.8;transform:scale(1.03);}}}}
-@keyframes ring-glow{{0%{{box-shadow:0 0 0 0 rgba(240,165,0,.5);}}70%{{box-shadow:0 0 0 14px rgba(240,165,0,0);}}100%{{box-shadow:0 0 0 0 rgba(240,165,0,0);}}}}
+@keyframes ring-glow{{0%{{box-shadow:0 0 0 0 {_rgba(ring_color,.5)};}}70%{{box-shadow:0 0 14px {_rgba(ring_color,0)};}}100%{{box-shadow:0 0 0 0 {_rgba(ring_color,0)};}}}}
 .avatar-img{{
     width:120px;height:120px;border-radius:50%;
     object-fit:cover;object-position:top;
-    border:3px solid #f0a500;
-    box-shadow:0 0 32px rgba(240,165,0,.25);
+    border:3px solid {ring_color};
+    box-shadow:0 0 32px {_rgba(ring_color,.25)};
 }}
 .avatar-emoji{{
     width:120px;height:120px;border-radius:50%;
     background:linear-gradient(135deg,#1a2535,#0f1824);
-    border:3px solid #f0a500;
+    border:3px solid {ring_color};
     display:flex;align-items:center;justify-content:center;
     font-size:54px;
     box-shadow:0 0 32px rgba(240,165,0,.2);
 }}
 .prof-name{{font-size:1rem;font-weight:700;color:#e6edf3;margin-top:6px;}}
-.status{{font-size:.68rem;color:#f0a500;margin-top:1px;}}
+.status{{font-size:.68rem;color:{ring_color};margin-top:1px;}}
 
 /* ---- Historico de bolhas ---- */
 .history-wrap{{
@@ -907,13 +939,13 @@ html,body{{
 }}
 .bubble.user{{
     align-self:flex-end;
-    background:#2d6a4f;color:#d8f3dc;
+    background:{user_bubble_color};color:#d8f3dc;
     border-bottom-right-radius:4px;
 }}
 .bubble.bot{{
     align-self:flex-start;
-    background:#1a1f2e;color:#e6edf3;
-    border:1px solid #252d3d;
+    background:{bot_bubble_color};color:#e6edf3;
+    border:1px solid {_rgba(bot_bubble_color,.6)};
     border-bottom-left-radius:4px;
 }}
 .bubble-label{{font-size:.6rem;color:#4a5a6a;margin:2px 4px;}}
@@ -1389,6 +1421,59 @@ def show_settings() -> None:
         else:
             st.error(t("save_error", lang))
 
+    st.markdown("<hr style='border-color:#1a2535;margin:1.2rem 0;'>", unsafe_allow_html=True)
+
+    # ---- Aparência — cores do anel e das bolhas ----
+    st.markdown(f"### {t('section_appearance', lang)}")
+    st.markdown(
+        f'<p style="font-size:.75rem;color:#4a5a6a;margin:-8px 0 14px;">{t("appearance_hint", lang)}</p>',
+        unsafe_allow_html=True)
+
+    cur_ring = profile.get("ring_color",       "#f0a500")
+    cur_user = profile.get("user_bubble_color", "#2d6a4f")
+    cur_bot  = profile.get("bot_bubble_color",  "#1a1f2e")
+
+    col_c1, col_c2, col_c3 = st.columns(3)
+    with col_c1:
+        new_ring = st.color_picker(t("ring_color",        lang), value=cur_ring, key="cp_ring")
+    with col_c2:
+        new_user = st.color_picker(t("user_bubble_color", lang), value=cur_user, key="cp_user")
+    with col_c3:
+        new_bot  = st.color_picker(t("bot_bubble_color",  lang), value=cur_bot,  key="cp_bot")
+
+    # Preview inline
+    st.markdown(f"""
+<div style="display:flex;gap:10px;margin:10px 0 14px;align-items:flex-end;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div style="width:42px;height:42px;border-radius:50%;
+                    background:#131c2a;
+                    outline:2.5px solid {new_ring};
+                    outline-offset:4px;
+                    box-shadow:0 0 12px {new_ring}44;"></div>
+        <span style="font-size:.58rem;color:#4a5a6a;">anel</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <div style="align-self:flex-end;background:{new_user};
+                    color:#fff;padding:6px 12px;border-radius:14px 14px 4px 14px;
+                    font-size:.75rem;max-width:60%;">Você</div>
+        <div style="align-self:flex-start;background:{new_bot};
+                    color:#e6edf3;padding:6px 12px;border-radius:14px 14px 14px 4px;
+                    border:1px solid #252d3d;font-size:.75rem;max-width:60%;">Professora</div>
+    </div>
+</div>""", unsafe_allow_html=True)
+
+    if st.button("💾 " + t("save", lang), key="save_appearance"):
+        p = dict(profile)
+        p["ring_color"]        = new_ring
+        p["user_bubble_color"] = new_user
+        p["bot_bubble_color"]  = new_bot
+        ok = update_profile(username, p)
+        if ok:
+            st.session_state.user["profile"] = p
+            st.success(t("data_saved", lang))
+        else:
+            st.error(t("save_error", lang))
+
 # =============================================================================
 # TELA DE HISTORICO
 # =============================================================================
@@ -1534,7 +1619,10 @@ def main():
     if token and st.query_params.get("s") != token:
         st.query_params["s"] = token
 
-    js_save_session(token)  # backup no localStorage/cookie
+    # Salva token apenas uma vez por sessão (não a cada rerun = -1 iframe)
+    if token and not st.session_state.get("_session_saved"):
+        js_save_session(token)
+        st.session_state["_session_saved"] = True
 
     show_sidebar()
     page = st.session_state.page
