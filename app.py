@@ -1098,21 +1098,19 @@ input[type=range].ctrl-range::-webkit-slider-thumb{{-webkit-appearance:none;widt
 
     <!-- Mic fixo no rodape -->
     <div class="mic-footer">
+        <div class="audio-controls" id="audioControls">
+            <button id="play-btn">▶ Ouvir</button>
+            <span class="ctrl-label">Vol</span>
+            <input type="range" class="ctrl-range" id="vol-slider" min="0" max="1" step="0.05" value="1">
+            <span class="ctrl-val" id="vol-val">100%</span>
+            <span class="ctrl-label">Vel</span>
+            <input type="range" class="ctrl-range" id="spd-slider" min="0.5" max="2" step="0.1" value="1">
+            <span class="ctrl-val" id="spd-val">1.0x</span>
+        </div>
         <button class="mic-btn" id="micBtn" title="Gravar">
             <i class="fa-solid fa-microphone"></i>
         </button>
         <div class="mic-hint" id="micHint">{t("tap_to_speak", lang)}</div>
-    </div>
-    <div class="audio-controls" id="audioControls">
-        <button id="play-btn" onclick="onPlayBtnClick()">▶ Ouvir</button>
-        <span class="ctrl-label">Vol</span>
-        <input type="range" class="ctrl-range" id="vol-slider" min="0" max="1" step="0.05" value="1"
-               oninput="document.getElementById('vol-val').textContent=Math.round(this.value*100)+'%';if(currentAudio)currentAudio.volume=parseFloat(this.value);">
-        <span class="ctrl-val" id="vol-val">100%</span>
-        <span class="ctrl-label">Vel</span>
-        <input type="range" class="ctrl-range" id="spd-slider" min="0.5" max="2" step="0.1" value="1"
-               oninput="document.getElementById('spd-val').textContent=parseFloat(this.value).toFixed(1)+'x';if(currentAudio)currentAudio.playbackRate=parseFloat(this.value);">
-        <span class="ctrl-val" id="spd-val">1.0x</span>
     </div>
 
 </div>
@@ -1251,6 +1249,27 @@ function onPlayBtnClick(){{
         if(b64) playTTS(b64);
     }}
 }}
+
+// ---- Wiring dos controles de áudio ----
+(function wireControls(){{
+    var playBtn  = document.getElementById('play-btn');
+    var volSlider = document.getElementById('vol-slider');
+    var spdSlider = document.getElementById('spd-slider');
+    var volVal   = document.getElementById('vol-val');
+    var spdVal   = document.getElementById('spd-val');
+
+    if(playBtn) playBtn.addEventListener('click', onPlayBtnClick);
+
+    if(volSlider) volSlider.addEventListener('input', function(){{
+        volVal.textContent = Math.round(this.value * 100) + '%';
+        if(currentAudio) currentAudio.volume = parseFloat(this.value);
+    }});
+
+    if(spdSlider) spdSlider.addEventListener('input', function(){{
+        spdVal.textContent = parseFloat(this.value).toFixed(1) + 'x';
+        if(currentAudio) currentAudio.playbackRate = parseFloat(this.value);
+    }});
+}})();
 
 // ---- Historico de bolhas ----
 function addBubble(role, text, b64){{
