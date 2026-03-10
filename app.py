@@ -1060,8 +1060,6 @@ input[type=range].ctrl-range::-webkit-slider-thumb{{-webkit-appearance:none;widt
     flex-shrink:0;
 }}
 
-.bubble-play-btn{{background:none;border:1px solid #1a2535;border-radius:14px;color:#8b949e;font-size:.68rem;padding:3px 10px;cursor:pointer;margin-top:4px;margin-bottom:6px;transition:all .15s;font-family:inherit;display:block;}}
-.bubble-play-btn:hover{{border-color:{ring_color};color:{ring_color};}}
 .audio-controls{{display:flex;align-items:center;gap:8px;padding:8px 14px;margin-top:8px;background:#0d1420;border:1px solid #1a2535;border-radius:12px;flex-wrap:wrap;width:100%;box-sizing:border-box;}}
 #play-btn{{background:#1a2535;color:#e6edf3;border:1px solid #252d3d;border-radius:8px;padding:5px 14px;font-size:.78rem;cursor:pointer;white-space:nowrap;transition:background .15s;font-family:inherit;}}
 #play-btn:hover{{background:#252d3d;}}
@@ -1319,8 +1317,7 @@ if(VM_ERROR){{
         HISTORY.forEach(function(msg, idx){{
             var isLast = idx === HISTORY.length - 1;
             var role   = msg.role === 'user' ? 'user' : 'bot';
-            var b64    = (role === 'bot' && isLast && TTS_B64) ? TTS_B64 : null;
-            addBubble(role, msg.content, b64);
+            addBubble(role, msg.content, null);
         }});
     }}
     // Autoplay da última resposta da IA
