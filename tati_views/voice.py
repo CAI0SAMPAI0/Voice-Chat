@@ -199,24 +199,40 @@ html,body{overflow:hidden!important;}
 
     components.html(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap');
 *{{box-sizing:border-box;margin:0;padding:0;}}
-html,body{{background:#060a10;font-family:'Sora',sans-serif;height:100%;overflow:hidden;}}
+html,body{{
+    background:#060a10;font-family:'Sora',sans-serif;
+    height:100%;overflow:hidden;
+    /* iOS safe area */
+    padding-bottom:env(safe-area-inset-bottom);
+}}
 .app{{
     display:flex;flex-direction:column;align-items:center;
-    height:100vh;padding:0 20px 0;gap:0;overflow:hidden;
+    height:100vh;
+    height:100dvh;
+    padding:0 16px 0;
+    gap:0;overflow:hidden;
 }}
+
 /* ── Avatar ── */
 .avatar-section{{
     flex-shrink:0;width:100%;
     display:flex;flex-direction:column;align-items:center;gap:4px;
-    padding:16px 0 10px;
+    padding:12px 0 8px;
     position:sticky;top:0;z-index:10;
     background:linear-gradient(180deg,#060a10 85%,transparent 100%);
 }}
+/* Avatar menor em telas pequenas */
 .avatar-wrap{{position:relative;width:120px;height:120px;flex-shrink:0;}}
+@media(max-height:700px){{
+    .avatar-wrap{{width:80px;height:80px;}}
+    .avatar-img,.avatar-emoji{{width:80px!important;height:80px!important;}}
+    .avatar-section{{padding:6px 0 4px;}}
+    .prof-name{{font-size:.85rem!important;}}
+}}
 .avatar-ring{{
     position:absolute;inset:-8px;border-radius:50%;
     border:2px solid {_rgba(ring_color,.3)};
@@ -246,17 +262,18 @@ html,body{{background:#060a10;font-family:'Sora',sans-serif;height:100%;overflow
 
 /* ── Histórico de bolhas ── */
 .history-wrap{{
-    width:100%;max-width:1900px;
+    width:100%;max-width:1890px;
     flex:1;min-height:0;
     overflow-y:auto;display:flex;flex-direction:column;gap:8px;
     padding:8px 4px;
     scrollbar-width:thin;scrollbar-color:#1a2535 transparent;
+    -webkit-overflow-scrolling:touch;
 }}
 .history-wrap::-webkit-scrollbar{{width:4px;}}
 .history-wrap::-webkit-scrollbar-thumb{{background:#1a2535;border-radius:4px;}}
 .bubble{{
     max-width:82%;padding:10px 15px;border-radius:18px;
-    font-size:.84rem;line-height:1.55;word-break:normal;
+    font-size:.84rem;line-height:1.55;word-break:break-word;
 }}
 .bubble.user{{
     align-self:flex-end;
@@ -275,28 +292,94 @@ html,body{{background:#060a10;font-family:'Sora',sans-serif;height:100%;overflow
 /* ── Botão de áudio por bolha ── */
 .bubble-play-btn{{
     align-self:flex-start;
-    background:transparent;
-    border:1px solid #1a2535;
-    color:#3a6a8a;
-    font-size:.72rem;
-    padding:4px 12px;
-    border-radius:8px;
-    cursor:pointer;
-    font-family:inherit;
-    transition:all .15s;
-    margin-bottom:4px;
+    background:transparent;border:1px solid #1a2535;color:#3a6a8a;
+    font-size:.72rem;padding:4px 12px;border-radius:8px;
+    cursor:pointer;font-family:inherit;transition:all .15s;margin-bottom:4px;
+    /* touch-friendly */
+    min-height:32px;
 }}
 .bubble-play-btn:hover{{color:#f0a500;border-color:rgba(240,165,0,.4);background:rgba(240,165,0,.06);}}
 .bubble-play-btn.playing{{color:#e05c2a;border-color:rgba(224,92,42,.5);}}
 
-/* ── Mic no rodapé ── */
+/* ── Erro ── */
+.error-box{{
+    background:rgba(224,92,42,.1);border:1px solid rgba(224,92,42,.3);
+    border-radius:10px;padding:8px 14px;font-size:.78rem;color:#e05c2a;
+    max-width:560px;width:100%;text-align:center;flex-shrink:0;
+}}
+
+/* ── Rodapé do mic — RESPONSIVO ── */
 .mic-footer{{
-    flex-shrink:0;width:100%;max-width:560px;
+    flex-shrink:0;
+    width:100%;max-width:620px;
     display:flex;flex-direction:column;align-items:center;
-    gap:8px;padding:12px 0 20px;
+    gap:6px;
+    padding:8px 0 max(16px, env(safe-area-inset-bottom));
     background:linear-gradient(to top,#060a10 70%,transparent);
     position:sticky;bottom:0;
 }}
+
+/* ── Controles de áudio: linha única que não quebra ── */
+.audio-controls{{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:8px 12px;
+    background:#0d1420;
+    border:1px solid #1a2535;
+    border-radius:12px;
+    width:100%;
+    overflow-x:auto;          /* scroll horizontal se necessário */
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    white-space:nowrap;
+    scrollbar-width:none;     /* esconde scrollbar */
+    flex-wrap:nowrap;         /* NUNCA quebra linha */
+    min-height:44px;
+}}
+.audio-controls::-webkit-scrollbar{{display:none;}}
+
+/* Em telas muito pequenas, reduz padding e fonte */
+@media(max-width:400px){{
+    .audio-controls{{padding:6px 10px;gap:4px;}}
+    .ctrl-label{{font-size:.6rem;}}
+    .ctrl-val{{font-size:.6rem;min-width:24px;}}
+    #global-play-btn{{padding:4px 10px;font-size:.72rem;}}
+}}
+
+.ctrl-label{{font-size:.68rem;color:#4a5a6a;white-space:nowrap;flex-shrink:0;}}
+.ctrl-val{{font-size:.68rem;color:#8b949e;min-width:28px;text-align:left;flex-shrink:0;}}
+
+input[type=range].ctrl-range{{
+    -webkit-appearance:none;
+    flex-shrink:0;
+    width:60px;
+    height:4px;
+    background:#1a2535;border-radius:2px;outline:none;cursor:pointer;
+    touch-action:none;   /* evita scroll ao arrastar no mobile */
+}}
+@media(min-width:480px){{
+    input[type=range].ctrl-range{{ width:80px; }}
+}}
+input[type=range].ctrl-range::-webkit-slider-thumb{{
+    -webkit-appearance:none;width:16px;height:16px;  /* maior para touch */
+    border-radius:50%;background:{ring_color};cursor:pointer;
+}}
+input[type=range].ctrl-range::-moz-range-thumb{{
+    width:16px;height:16px;border-radius:50%;background:{ring_color};cursor:pointer;border:none;
+}}
+
+#global-play-btn{{
+    background:#1a2535;color:#e6edf3;border:1px solid #252d3d;
+    border-radius:8px;padding:5px 12px;font-size:.78rem;cursor:pointer;
+    white-space:nowrap;transition:background .15s;font-family:inherit;
+    flex-shrink:0;
+    min-height:32px;        /* touch-friendly */
+    touch-action:manipulation;
+}}
+#global-play-btn:hover{{background:#252d3d;}}
+
+/* ── Botão mic ── */
 .mic-btn{{
     width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;
     background:linear-gradient(135deg,#1a2535,#131c2a);
@@ -304,6 +387,13 @@ html,body{{background:#060a10;font-family:'Sora',sans-serif;height:100%;overflow
     display:flex;align-items:center;justify-content:center;
     box-shadow:0 4px 20px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05);
     transition:all .2s;outline:none;
+    touch-action:manipulation;   /* remove delay 300ms no mobile */
+    -webkit-tap-highlight-color:transparent;
+    flex-shrink:0;
+}}
+/* Mic maior em tablets */
+@media(min-width:600px){{
+    .mic-btn{{width:80px;height:80px;font-size:32px;}}
 }}
 .mic-btn:hover{{background:linear-gradient(135deg,#1e2f40,#182130);color:#e6edf3;}}
 .mic-btn.recording{{
@@ -320,33 +410,6 @@ html,body{{background:#060a10;font-family:'Sora',sans-serif;height:100%;overflow
     100%{{box-shadow:0 0 0 0 rgba(224,92,42,0),0 4px 20px rgba(224,92,42,.3);}}
 }}
 .mic-hint{{font-size:.68rem;color:#4a5a6a;letter-spacing:.3px;}}
-.error-box{{
-    background:rgba(224,92,42,.1);border:1px solid rgba(224,92,42,.3);
-    border-radius:10px;padding:8px 14px;font-size:.78rem;color:#e05c2a;
-    max-width:560px;width:100%;text-align:center;flex-shrink:0;
-}}
-/* ── Controles de áudio ── */
-.audio-controls{{
-    display:flex;align-items:center;gap:8px;padding:8px 14px;margin-top:4px;
-    background:#0d1420;border:1px solid #1a2535;border-radius:12px;
-    flex-wrap:wrap;width:100%;
-}}
-.ctrl-label{{font-size:.68rem;color:#4a5a6a;white-space:nowrap;}}
-input[type=range].ctrl-range{{
-    -webkit-appearance:none;width:72px;height:4px;
-    background:#1a2535;border-radius:2px;outline:none;cursor:pointer;
-}}
-input[type=range].ctrl-range::-webkit-slider-thumb{{
-    -webkit-appearance:none;width:13px;height:13px;
-    border-radius:50%;background:{ring_color};cursor:pointer;
-}}
-.ctrl-val{{font-size:.68rem;color:#8b949e;min-width:28px;text-align:left;}}
-#global-play-btn{{
-    background:#1a2535;color:#e6edf3;border:1px solid #252d3d;
-    border-radius:8px;padding:5px 14px;font-size:.78rem;cursor:pointer;
-    white-space:nowrap;transition:background .15s;font-family:inherit;
-}}
-#global-play-btn:hover{{background:#252d3d;}}
 </style>
 </head><body>
 <div class="app" id="app">
@@ -595,21 +658,51 @@ try{{
     setTimeout(function(){{obs.disconnect();}},15000);
 }}catch(e){{}}
 
-// ── Resize iframe ──
+// ── Resize iframe — usa dvh para mobile (esconde barra do browser) ──
 (function resizeIframe(){{
     try{{
-        var iframes=window.parent.document.querySelectorAll('iframe');
+        var par = window.parent;
+        // Altura real do viewport (dvh = dynamic viewport height, funciona no mobile)
+        var h = par.innerHeight;
+        try{{
+            // visualViewport é mais preciso no mobile (exclui teclado virtual)
+            if(par.visualViewport) h = par.visualViewport.height;
+        }}catch(e){{}}
+
+        var iframes = par.document.querySelectorAll('iframe');
         for(var i=0;i<iframes.length;i++){{
             try{{
                 if(iframes[i].contentWindow===window){{
-                    var h=window.parent.innerHeight;
-                    iframes[i].style.cssText='height:'+h+'px;max-height:'+h+'px;display:block;border:none;';
+                    iframes[i].style.cssText=[
+                        'height:'+h+'px',
+                        'max-height:'+h+'px',
+                        'min-height:200px',
+                        'display:block',
+                        'border:none',
+                        'width:100%',
+                    ].join(';');
+                    // Remove padding/margin dos wrappers Streamlit
+                    var p=iframes[i].parentElement;
+                    for(var j=0;j<10&&p&&p!==par.document.body;j++){{
+                        p.style.margin='0';p.style.padding='0';
+                        p.style.overflow='hidden';p.style.maxHeight=h+'px';
+                        p=p.parentElement;
+                    }}
                     break;
                 }}
             }}catch(e){{}}
         }}
     }}catch(e){{}}
-    try{{window.parent.removeEventListener('resize',resizeIframe);window.parent.addEventListener('resize',resizeIframe);}}catch(e){{}}
+
+    // Re-executa ao redimensionar E ao mudar visualViewport (teclado mobile)
+    try{{
+        par.removeEventListener('resize',resizeIframe);
+        par.addEventListener('resize',resizeIframe);
+        if(par.visualViewport){{
+            par.visualViewport.removeEventListener('resize',resizeIframe);
+            par.visualViewport.addEventListener('resize',resizeIframe);
+        }}
+    }}catch(e){{}}
 }})();
 
 }})();
