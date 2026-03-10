@@ -534,7 +534,6 @@ section[data-testid="stSidebar"] {
     transition: transform 0.28s cubic-bezier(.4,0,.2,1) !important;
     transform: translateX(0) !important;
 }
-/* Fechada: desliza para fora à esquerda */
 section[data-testid="stSidebar"].pav-sb-closed {
     transform: translateX(-270px) !important;
 }
@@ -545,18 +544,20 @@ section[data-testid="stSidebar"] > div:first-child {
     flex-direction: column !important;
     min-height: 100vh !important;
 }
-/* Empurra o conteúdo principal para dar espaço à sidebar aberta */
-[data-testid="stAppViewContainer"] > section:not([data-testid="stSidebar"]),
-[data-testid="stMain"] {
+/* Conteúdo principal — afastado da sidebar */
+[data-testid="stAppViewContainer"],
+.main, [data-testid="stMain"],
+section[data-testid="stMain"] {
     margin-left: 260px !important;
     transition: margin-left 0.28s cubic-bezier(.4,0,.2,1) !important;
 }
-/* Quando sidebar fechada, conteúdo ocupa tela toda */
-body.pav-sb-closed [data-testid="stAppViewContainer"] > section:not([data-testid="stSidebar"]),
-body.pav-sb-closed [data-testid="stMain"] {
+body.pav-sb-closed [data-testid="stAppViewContainer"],
+body.pav-sb-closed .main,
+body.pav-sb-closed [data-testid="stMain"],
+body.pav-sb-closed section[data-testid="stMain"] {
     margin-left: 0 !important;
 }
-/* ---- Esconde APENAS botões nativos de colapso ---- */
+/* ---- Esconde botões nativos de colapso e header vazio ---- */
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"],
 button[aria-label="Close sidebar"],
@@ -780,57 +781,65 @@ def show_sidebar() -> None:
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
 
-    components.html("""<!DOCTYPE html><html><head>
-<style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
-</head><body><script>
+    # Injeta via st.markdown (vai direto no documento, não em iframe)
+    # O script usa um id único para não duplicar e um MutationObserver
+    # para re-aplicar o estado após cada rerun do Streamlit automaticamente.
+    st.markdown("""
+<script>
 (function(){
+    if(window._pavSbInit) return;   // já rodou nesta sessão de aba
+    window._pavSbInit = true;
+
     var KEY = 'pav_sb_open';
-    function p(){ return window.parent || window; }
-    function pd(){ return p().document; }
+
     function isOpen(){
-        try{ return p().sessionStorage.getItem(KEY) !== 'false'; }catch(e){ return true; }
+        try{ return sessionStorage.getItem(KEY) !== 'false'; }catch(e){ return true; }
     }
     function setOpen(v){
-        try{ p().sessionStorage.setItem(KEY, v?'true':'false'); }catch(e){}
+        try{ sessionStorage.setItem(KEY, v?'true':'false'); }catch(e){}
     }
+
     function apply(){
-        var doc = pd();
-        var sb  = doc.querySelector('section[data-testid="stSidebar"]');
-        var btn = doc.getElementById('pav-sb-btn');
+        var sb  = document.querySelector('section[data-testid="stSidebar"]');
+        var btn = document.getElementById('pav-sb-btn');
         if(!sb || !btn) return;
         var open = isOpen();
-        if(open){
-            sb.classList.remove('pav-sb-closed');
-            doc.body.classList.remove('pav-sb-closed');
-            btn.classList.remove('pav-closed');
-            btn.textContent = '◀';
-        } else {
-            sb.classList.add('pav-sb-closed');
-            doc.body.classList.add('pav-sb-closed');
-            btn.classList.add('pav-closed');
-            btn.textContent = '▶';
-        }
+        sb.classList.toggle('pav-sb-closed', !open);
+        document.body.classList.toggle('pav-sb-closed', !open);
+        btn.classList.toggle('pav-closed', !open);
+        btn.textContent = open ? '◀' : '▶';
     }
-    function init(){
-        var doc = pd();
-        var btn = doc.getElementById('pav-sb-btn');
+
+    function ensureBtn(){
+        var btn = document.getElementById('pav-sb-btn');
         if(!btn){
-            btn = doc.createElement('button');
+            btn = document.createElement('button');
             btn.id = 'pav-sb-btn';
-            doc.body.appendChild(btn);
-            btn.addEventListener('click', function(e){
-                e.stopPropagation();
-                setOpen(!isOpen());
-                apply();
-            });
+            document.body.appendChild(btn);
         }
+        // Re-registra onclick sempre (pode ter sido perdido)
+        btn.onclick = function(e){
+            e.stopPropagation();
+            setOpen(!isOpen());
+            apply();
+        };
+        return btn;
+    }
+
+    function run(){
+        ensureBtn();
         apply();
     }
-    if(document.readyState==='complete'){ init(); }
-    else{ window.addEventListener('load', init); }
-    setTimeout(init,100); setTimeout(init,500); setTimeout(init,1200);
+
+    // Roda agora
+    run();
+
+    // MutationObserver: re-aplica sempre que o Streamlit modificar o DOM (rerun)
+    var obs = new MutationObserver(function(){ run(); });
+    obs.observe(document.body, { childList: true, subtree: true });
 })();
-</script></body></html>""", height=0)
+</script>
+""", unsafe_allow_html=True)
 
     with st.sidebar:
         # Avatar do aluno + nome
