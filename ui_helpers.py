@@ -243,11 +243,30 @@ def get_avatar_frames() -> dict:
                 return f"data:image/png;base64,{base64.b64encode(p.read_bytes()).decode()}"
         return ""
     return {
-        "base":   _load([_base/"assets"/"avatar_tati_normal.png",     "assets/avatar_tati_normal.png"]),
-        "closed": _load([_base/"assets"/"avatar_tati_closed.png",     "assets/avatar_tati_closed.png"]),
-        "mid":    _load([_base/"assets"/"avatar_tati_meio.png",       "assets/avatar_tati_meio.png"]),
-        "open":   _load([_base/"assets"/"avatar_tati_bem_aberta.png", "assets/avatar_tati_bem_aberta.png",
-                         _base/"assets"/"avatar_tati_aberta.png",     "assets/avatar_tati_aberta.png"]),
+        # ── Animação de boca (usados durante a fala) ──────────────────────
+        "base":     _load([_base/"assets"/"avatar_tati_normal.png",
+                           "assets/avatar_tati_normal.png"]),
+
+        "closed":   _load([_base/"assets"/"avatar_tati_closed.png",
+                           "assets/avatar_tati_closed.png"]),
+
+        "mid":      _load([_base/"assets"/"avatar_tati_meio.png",
+                           "assets/avatar_tati_meio.png"]),         # boca levemente aberta
+
+        "open":     _load([_base/"assets"/"avatar_tati_bem_aberta.png",
+                           "assets/avatar_tati_bem_aberta.png",
+                           _base/"assets"/"avatar_tati_aberta.png",
+                           "assets/avatar_tati_aberta.png"]),        # boca bem aberta
+
+        # ── Expressões extras (usadas em eventos específicos) ─────────────
+        "smile":    _load([_base/"assets"/"avatar_tati_aberta.png",
+                           "assets/avatar_tati_aberta.png"]),        # sorrindo
+
+        "wink":     _load([_base/"assets"/"tati_piscando.png",
+                           "assets/tati_piscando.png"]),             # olhos fechados / piscando
+
+        "surprise": _load([_base/"assets"/"tati_surpresa.png",
+                           "assets/tati_surpresa.png"]),             # surpresa / animada
     }
 
 
