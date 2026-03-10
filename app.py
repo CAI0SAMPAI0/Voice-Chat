@@ -2,7 +2,8 @@ import os, json, base64
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
-
+import requests
+import time
 import streamlit as st
 import streamlit.components.v1 as components
 import anthropic
@@ -833,7 +834,7 @@ def show_sidebar() -> None:
         # Navegação
         nav_items = [
             ("voice",    "&#127908; " + t("voice_mode", lang) if "voice_mode" in _STRINGS["pt-BR"]
-                         else "&#127908; Modo Conversa"),
+                         else "&#127908; Voice Mode"),
             ("settings", "&#9881; "  + t("settings", lang)),
             ("history",  "&#128196; " + t("history", lang)),
         ]
