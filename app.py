@@ -1045,6 +1045,13 @@ html,body{{
     100%{{box-shadow:0 0 0 0 rgba(224,92,42,0),0 4px 20px rgba(224,92,42,.3);}}
 }}
 .mic-hint{{font-size:.68rem;color:#4a5a6a;letter-spacing:.3px;}}
+.audio-controls{{display:flex;align-items:center;gap:8px;padding:8px 14px;margin-top:8px;background:#0d1420;border:1px solid #1a2535;border-radius:12px;flex-wrap:wrap;width:100%;box-sizing:border-box;}}
+#play-btn{{background:#1a2535;color:#e6edf3;border:1px solid #252d3d;border-radius:8px;padding:5px 14px;font-size:.78rem;cursor:pointer;white-space:nowrap;transition:background .15s;font-family:inherit;}}
+#play-btn:hover{{background:#252d3d;}}
+.ctrl-label{{font-size:.68rem;color:#4a5a6a;white-space:nowrap;}}
+input[type=range].ctrl-range{{-webkit-appearance:none;width:72px;height:4px;background:#1a2535;border-radius:2px;outline:none;cursor:pointer;}}
+input[type=range].ctrl-range::-webkit-slider-thumb{{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:{ring_color};cursor:pointer;}}
+.ctrl-val{{font-size:.68rem;color:#8b949e;min-width:28px;text-align:left;}}
 
 /* ---- Error ---- */
 .error-box{{
@@ -1086,6 +1093,17 @@ html,body{{
             <i class="fa-solid fa-microphone"></i>
         </button>
         <div class="mic-hint" id="micHint">{t("tap_to_speak", lang)}</div>
+    </div>
+    <div class="audio-controls" id="audioControls">
+        <button id="play-btn" onclick="onPlayBtnClick()">▶ Ouvir</button>
+        <span class="ctrl-label">Vol</span>
+        <input type="range" class="ctrl-range" id="vol-slider" min="0" max="1" step="0.05" value="1"
+               oninput="document.getElementById('vol-val').textContent=Math.round(this.value*100)+'%';if(currentAudio)currentAudio.volume=parseFloat(this.value);">
+        <span class="ctrl-val" id="vol-val">100%</span>
+        <span class="ctrl-label">Vel</span>
+        <input type="range" class="ctrl-range" id="spd-slider" min="0.5" max="2" step="0.1" value="1"
+               oninput="document.getElementById('spd-val').textContent=parseFloat(this.value).toFixed(1)+'x';if(currentAudio)currentAudio.playbackRate=parseFloat(this.value);">
+        <span class="ctrl-val" id="spd-val">1.0x</span>
     </div>
 
 </div>
@@ -1174,31 +1192,53 @@ function startMouthAnim(audioEl){{
 
 // ---- Audio TTS ----
 var currentAudio = null;
+var currentB64   = null;
+
+function getVolume(){{
+    var s = document.getElementById('vol-slider');
+    return s ? parseFloat(s.value) : 1.0;
+}}
+function getSpeed(){{
+    var s = document.getElementById('spd-slider');
+    return s ? parseFloat(s.value) : 1.0;
+}}
+
 function playTTS(b64){{
     if(currentAudio){{ currentAudio.pause(); currentAudio=null; stopMouthAnim(); }}
     if(!b64)return;
+    currentB64 = b64;
     ring.classList.add('active');
     statusTxt.textContent = SPEAKING;
     var audio = new Audio('data:audio/mp3;base64,'+b64);
+    audio.volume       = getVolume();
+    audio.playbackRate = getSpeed();
     currentAudio = audio;
-    audio.onplay    = function(){{ startMouthAnim(audio); }};
-    audio.onended   = function(){{ stopMouthAnim(); ring.classList.remove('active'); statusTxt.textContent='&#9679; Online'; currentAudio=null; }};
-    audio.onerror   = function(){{ stopMouthAnim(); ring.classList.remove('active'); statusTxt.textContent='&#9679; Online'; }};
-
-    // Fallback SpeechSynthesis se TTS falhar
-    if(!b64 && REPLY){{
-        var utt=new SpeechSynthesisUtterance(REPLY);
-        utt.lang=SPEECH_LANG;
-        window.speechSynthesis.speak(utt);
-        return;
-    }}
+    audio.onplay  = function(){{ startMouthAnim(audio); updatePlayBtn(true); }};
+    audio.onended = function(){{ stopMouthAnim(); ring.classList.remove('active'); statusTxt.textContent='Online'; currentAudio=null; updatePlayBtn(false); }};
+    audio.onerror = function(){{ stopMouthAnim(); ring.classList.remove('active'); statusTxt.textContent='Online'; updatePlayBtn(false); }};
     audio.play().catch(function(){{
-        if(REPLY){{
-            var utt=new SpeechSynthesisUtterance(REPLY);
-            utt.lang=SPEECH_LANG;
-            window.speechSynthesis.speak(utt);
-        }}
+        stopMouthAnim(); ring.classList.remove('active'); updatePlayBtn(false);
     }});
+}}
+
+function stopTTS(){{
+    if(currentAudio){{ currentAudio.pause(); currentAudio=null; stopMouthAnim(); ring.classList.remove('active'); statusTxt.textContent='Online'; updatePlayBtn(false); }}
+}}
+
+function updatePlayBtn(playing){{
+    var btn = document.getElementById('play-btn');
+    if(!btn) return;
+    btn.textContent = playing ? '⏹ Parar' : '▶ Ouvir';
+    btn.style.background = playing ? '#8b2a2a' : '#1a2535';
+}}
+
+function onPlayBtnClick(){{
+    if(currentAudio && !currentAudio.paused){{
+        stopTTS();
+    }} else {{
+        var b64 = currentB64 || TTS_B64;
+        if(b64) playTTS(b64);
+    }}
 }}
 
 // ---- Historico de bolhas ----
@@ -1228,9 +1268,7 @@ if(VM_ERROR){{
             addBubble(msg.role === 'user' ? 'user' : 'bot', msg.content);
         }});
     }}
-    if(TTS_B64){{
-        setTimeout(function(){{ playTTS(TTS_B64); }}, 400);
-    }}
+    // Autoplay removido — usuário escolhe quando ouvir
 }}
 
 // ---- Mic: ativa gravar no Streamlit ----
