@@ -1681,7 +1681,7 @@ def main():
 
     show_sidebar()
 
-    # Botão flutuante de toggle da sidebar — sempre visível via JS
+    # Botão flutuante — controla sidebar diretamente via CSS (sem depender de botão nativo)
     components.html("""<!DOCTYPE html><html><head>
 <style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
 </head><body><script>
@@ -1689,91 +1689,82 @@ def main():
   var par = window.parent ? window.parent.document : null;
   if(!par) return;
 
-  // Remove instância anterior
+  // Injeta <style> de controle da sidebar no documento pai (se ainda não existe)
+  if(!par.getElementById('pav-sb-style')){
+    var s = par.createElement('style');
+    s.id = 'pav-sb-style';
+    s.textContent = '';
+    par.head.appendChild(s);
+  }
+
+  // Remove botão anterior
   var old = par.getElementById('pav-sidebar-toggle');
   if(old) old.remove();
+
+  // Estado: sidebar aberta ou fechada
+  // Lê do atributo data-pav-sb do body (persiste entre reruns do Streamlit)
+  var isOpen = par.body.getAttribute('data-pav-sb') !== 'closed';
+
+  function getSidebar(){
+    return par.querySelector('section[data-testid="stSidebar"]');
+  }
+
+  function applyState(open){
+    var sb = getSidebar();
+    if(!sb) return;
+    var style = par.getElementById('pav-sb-style');
+    if(open){
+      style.textContent = '';
+      sb.style.removeProperty('display');
+      sb.style.removeProperty('width');
+      sb.style.removeProperty('min-width');
+      sb.style.removeProperty('overflow');
+      sb.style.removeProperty('visibility');
+      par.body.setAttribute('data-pav-sb','open');
+    } else {
+      style.textContent =
+        'section[data-testid="stSidebar"]{display:none!important;}' +
+        'section[data-testid="stMain"]{margin-left:0!important;width:100%!important;}';
+      par.body.setAttribute('data-pav-sb','closed');
+    }
+    isOpen = open;
+  }
 
   // Cria botão flutuante
   var btn = par.createElement('button');
   btn.id = 'pav-sidebar-toggle';
   btn.title = 'Menu';
-  btn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="2.2" rx="1.1" fill="#8b949e"/><rect x="3" y="10.9" width="18" height="2.2" rx="1.1" fill="#8b949e"/><rect x="3" y="16.8" width="18" height="2.2" rx="1.1" fill="#8b949e"/></svg>';
   par.body.appendChild(btn);
 
-  function isSidebarOpen(){
-    var sb = par.querySelector('section[data-testid="stSidebar"]');
-    if(!sb) return false;
-    // Streamlit marca sidebar recolhida com aria-expanded=false ou width quase zero
-    var style = par.defaultView.getComputedStyle(sb);
-    var w = parseFloat(style.width || '0');
-    return w > 50;
-  }
-
-  function clickToggle(){
-    // Quando sidebar está FECHADA → botão fica em stSidebarCollapsedControl
-    var collapsed = par.querySelector('[data-testid="stSidebarCollapsedControl"] button');
-    if(collapsed){ collapsed.click(); return; }
-
-    // Quando sidebar está ABERTA → botão fica DENTRO da sidebar com aria-label
-    var openBtn = par.querySelector('section[data-testid="stSidebar"] button[aria-label="Close sidebar"]');
-    if(openBtn){ openBtn.click(); return; }
-
-    // Fallback genérico — qualquer botão com aria-label de sidebar
-    var generic = par.querySelector('button[aria-label="Close sidebar"]') ||
-                  par.querySelector('button[aria-label="Open sidebar"]');
-    if(generic){ generic.click(); return; }
-
-    // Último recurso: manipula a sidebar diretamente via CSS
-    var sb = par.querySelector('section[data-testid="stSidebar"]');
-    if(sb){
-      if(isSidebarOpen()){
-        sb.style.setProperty('margin-left', '-300px', 'important');
-        sb.style.setProperty('visibility', 'hidden', 'important');
-      } else {
-        sb.style.removeProperty('margin-left');
-        sb.style.removeProperty('visibility');
-      }
-    }
-  }
+  btn.style.cssText = 'position:fixed;top:14px;left:10px;z-index:2147483647;width:36px;height:36px;background:#0f1824;border:1px solid #1a2535;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.6);transition:background .15s,border-color .15s,transform .15s;padding:0;outline:none;';
 
   btn.addEventListener('click', function(){
-    clickToggle();
-    btn.style.transform = 'scale(.88)';
-    setTimeout(function(){ btn.style.transform = ''; }, 150);
+    applyState(!isOpen);
+    btn.style.transform='scale(.88)';
+    setTimeout(function(){btn.style.transform='';},150);
   });
-
-  // Estilo inline — imune a qualquer CSS externo
-  function applyStyle(){
-    btn.style.cssText = [
-      'position:fixed','top:14px','left:10px','z-index:2147483647',
-      'width:36px','height:36px',
-      'background:#0f1824','border:1px solid #1a2535','border-radius:10px',
-      'display:flex !important','align-items:center','justify-content:center',
-      'cursor:pointer','box-shadow:0 2px 10px rgba(0,0,0,.6)',
-      'transition:background .15s,border-color .15s,transform .15s',
-      'padding:0','outline:none','visibility:visible','opacity:1'
-    ].join(';');
-    btn.querySelector('svg').style.cssText='width:18px;height:18px;fill:#8b949e;transition:fill .15s;display:block;';
-  }
-  applyStyle();
 
   btn.addEventListener('mouseenter', function(){
     btn.style.background='#1a2535';
     btn.style.borderColor='#f0a500';
-    btn.querySelector('svg').style.fill='#f0a500';
+    btn.querySelectorAll('rect').forEach(function(r){r.setAttribute('fill','#f0a500');});
   });
   btn.addEventListener('mouseleave', function(){
-    applyStyle();
+    btn.style.background='#0f1824';
+    btn.style.borderColor='#1a2535';
+    btn.querySelectorAll('rect').forEach(function(r){r.setAttribute('fill','#8b949e');});
   });
 
-  // Garante que o estilo não seja sobrescrito por reruns do Streamlit
-  var styleObs = new MutationObserver(function(){
+  // Aplica estado inicial
+  applyState(isOpen);
+
+  // Mantém botão no DOM durante reruns do Streamlit
+  new MutationObserver(function(){
     if(!par.getElementById('pav-sidebar-toggle')){
       par.body.appendChild(btn);
     }
-    applyStyle();
-  });
-  styleObs.observe(par.body, {childList:true, subtree:false});
+  }).observe(par.body, {childList:true});
 })();
 </script></body></html>""", height=1)
 
