@@ -491,12 +491,27 @@ section[data-testid="stMain"] > div {
     max-width: 100% !important;
     padding: 0 !important;
 }
-/* ---- Sidebar ---- */
+/* ---- Sidebar — sempre visível e expandida ---- */
 section[data-testid="stSidebar"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
     background: #070c15 !important;
     border-right: 1px solid #1a2535 !important;
-    min-width: 240px !important;
-    max-width: 300px !important;
+    position: relative !important;
+    left: 0 !important;
+    margin-left: 0 !important;
+}
+/* Esconde botões nativos de colapsar/expandir sidebar */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"],
+button[aria-label="Close sidebar"],
+button[aria-label="Open sidebar"] {
+    display: none !important;
 }
 /* ---- Layout de páginas internas (settings, history, dashboard) ---- */
 .pav-page {
