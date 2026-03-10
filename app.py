@@ -268,7 +268,6 @@ _DEFAULTS = {
     "_vm_user_said": "",
     "_vm_error":   "",
     "_vm_last_upload": None,
-    "_sidebar_open": True,
 }
 for k, v in _DEFAULTS.items():
     if k not in st.session_state:
@@ -491,33 +490,6 @@ section[data-testid="stSidebar"] {
     min-width: 240px !important;
     max-width: 300px !important;
 }
-/* ---- Sidebar toggle — estilo base (JS garante visibilidade) ---- */
-#pav-sidebar-toggle {
-    position: fixed !important;
-    top: 14px !important;
-    left: 10px !important;
-    z-index: 99999 !important;
-    width: 36px !important;
-    height: 36px !important;
-    background: #0f1824 !important;
-    border: 1px solid #1a2535 !important;
-    border-radius: 10px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,.5) !important;
-    transition: background .15s, border-color .15s !important;
-}
-#pav-sidebar-toggle:hover {
-    background: #1a2535 !important;
-    border-color: #f0a500 !important;
-}
-#pav-sidebar-toggle svg {
-    width: 18px; height: 18px; fill: #8b949e;
-    transition: fill .15s;
-}
-#pav-sidebar-toggle:hover svg { fill: #f0a500; }
 /* ---- Layout de páginas internas (settings, history, dashboard) ---- */
 .pav-page {
     padding: 1.5rem 2rem;
@@ -528,11 +500,6 @@ div[data-testid="stButton"] > button {
     border-radius: 12px !important;
     font-weight: 600 !important;
     transition: all .2s !important;
-}
-/* ---- Esconde botão nativo do Streamlit (usamos o nosso) ---- */
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"] {
-    display: none !important;
 }
 /* ---- Scrollbar ---- */
 ::-webkit-scrollbar { width: 4px; }
@@ -708,36 +675,8 @@ def show_sidebar() -> None:
     profile  = user.get("profile", {})
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
-    sb_open  = st.session_state.get("_sidebar_open", True)
-
-    # Botão ☰ fixo no topo-esquerdo quando sidebar fechada
-    if not sb_open:
-        st.markdown("""<style>
-#pav-open-btn{position:fixed;top:12px;left:10px;z-index:99999;}
-#pav-open-btn button{
-    width:36px!important;height:36px!important;min-height:0!important;
-    background:#0f1824!important;border:1px solid #1a2535!important;
-    border-radius:10px!important;font-size:18px!important;
-    padding:0!important;color:#8b949e!important;
-    box-shadow:0 2px 10px rgba(0,0,0,.5)!important;
-    display:flex!important;align-items:center!important;justify-content:center!important;
-}
-#pav-open-btn button:hover{background:#1a2535!important;color:#f0a500!important;border-color:#f0a500!important;}
-</style><div id="pav-open-btn">""", unsafe_allow_html=True)
-        if st.button("☰", key="sb_open_btn"):
-            st.session_state["_sidebar_open"] = True
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-        return
 
     with st.sidebar:
-        # Botão fechar sidebar
-        col_close, col_spacer = st.columns([1, 4])
-        with col_close:
-            if st.button("✕", key="sb_close_btn", help="Fechar menu"):
-                st.session_state["_sidebar_open"] = False
-                st.rerun()
-
         # Avatar do aluno + nome
         uav_html = user_avatar_html(username, size=52, fallback_emoji="🎓")
 
@@ -1714,13 +1653,6 @@ def main():
         st.session_state["_session_saved"] = True
 
     show_sidebar()
-
-    # CSS: esconde sidebar quando fechada, ajusta conteúdo
-    if not st.session_state.get("_sidebar_open", True):
-        st.markdown("""<style>
-section[data-testid="stSidebar"]{display:none!important;}
-section[data-testid="stMain"],.main{margin-left:0!important;width:100vw!important;}
-</style>""", unsafe_allow_html=True)
 
     page = st.session_state.page
 
