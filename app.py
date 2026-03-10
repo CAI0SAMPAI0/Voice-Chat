@@ -521,17 +521,7 @@ body {
     min-height: 100vh;
     min-height: -webkit-fill-available;
 }
-/* ---- Sidebar — sempre presente no DOM, nunca colapsada pelo Streamlit ---- */
-/* Esconde os controles nativos de colapso para nunca disparar o collapse do Streamlit */
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"],
-[data-testid="stSidebarHeader"],
-button[aria-label="Close sidebar"],
-button[aria-label="Open sidebar"],
-[data-testid="stSidebar"] [data-testid="baseButton-headerNoPadding"] {
-    display: none !important;
-}
-/* Sidebar base — sempre visível, posição esquerda padrão */
+/* ---- Sidebar base ---- */
 section[data-testid="stSidebar"] {
     background: #070c15 !important;
     border-right: 1px solid #1a2535 !important;
@@ -539,25 +529,45 @@ section[data-testid="stSidebar"] {
     min-width: 260px !important;
     max-width: 260px !important;
     overflow: hidden !important;
-    /* Transição suave de abertura/fechamento */
     transition: width 0.28s cubic-bezier(.4,0,.2,1),
                 min-width 0.28s cubic-bezier(.4,0,.2,1),
                 opacity 0.28s ease !important;
     flex-shrink: 0 !important;
 }
-/* Classe adicionada pelo JS quando sidebar está fechada */
+/* Fecha a sidebar via CSS — largura zero, sem afetar o DOM interno */
 section[data-testid="stSidebar"].pav-sb-closed {
     width: 0px !important;
     min-width: 0px !important;
     opacity: 0 !important;
+    pointer-events: none !important;
 }
-/* Padding interno da sidebar */
+/* Padding interno */
 section[data-testid="stSidebar"] > div:first-child {
     padding: 0 12px 16px !important;
     display: flex !important;
     flex-direction: column !important;
     min-height: 100vh !important;
-    width: 260px !important; /* mantém largura interna mesmo ao colapsar */
+    width: 260px !important;
+    overflow: hidden !important;
+}
+/* ---- Esconde APENAS os botões nativos de colapso — NÃO o stSidebarHeader ---- */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"],
+button[aria-label="Close sidebar"],
+button[aria-label="Open sidebar"] {
+    display: none !important;
+}
+/* Esconde só o botão dentro do header, não o header em si */
+[data-testid="stSidebarHeader"] button,
+[data-testid="stSidebarHeader"] [data-testid="baseButton-headerNoPadding"] {
+    display: none !important;
+}
+/* Remove o espaço vazio que o stSidebarHeader deixa */
+[data-testid="stSidebarHeader"] {
+    padding: 0 !important;
+    min-height: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
 }
 /* Remove gap excessivo entre elementos da sidebar */
 section[data-testid="stSidebar"] .stButton { margin-bottom: 4px !important; }
@@ -566,10 +576,9 @@ section[data-testid="stSidebar"] .block-container { padding-top: 0 !important; }
 #pav-sb-btn {
     position: fixed !important;
     top: 12px !important;
-    left: 268px !important;  /* logo depois da sidebar quando aberta */
+    left: 268px !important;
     z-index: 9999 !important;
-    width: 26px !important;
-    height: 26px !important;
+    width: 26px !important; height: 26px !important;
     border-radius: 50% !important;
     background: #0f1824 !important;
     border: 1px solid #1a2535 !important;
@@ -585,13 +594,9 @@ section[data-testid="stSidebar"] .block-container { padding-top: 0 !important; }
     line-height: 1 !important;
 }
 #pav-sb-btn:hover { background: #1a2535 !important; }
-/* Quando sidebar fechada, botão vai para a esquerda */
 #pav-sb-btn.pav-closed { left: 8px !important; }
-/* ---- Layout de páginas internas (settings, history, dashboard) ---- */
-.pav-page {
-    padding: 1.5rem 2rem;
-    max-width: 820px;
-}
+/* ---- Layout de páginas internas ---- */
+.pav-page { padding: 1.5rem 2rem; max-width: 820px; }
 /* ---- Botoes Streamlit base ---- */
 div[data-testid="stButton"] > button {
     border-radius: 12px !important;
@@ -782,70 +787,59 @@ def show_sidebar() -> None:
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
 
-    # Injeta botão customizado que controla a sidebar via CSS class (width:0).
-    # O estado é salvo no sessionStorage do parent para sobreviver a reruns.
-    # NUNCA toca nos botões nativos do Streamlit para não disparar collapse real.
+    # Botão de toggle que controla sidebar via CSS class — nunca dispara o collapse nativo.
+    # Estado salvo no sessionStorage do parent para sobreviver a reruns.
     components.html("""<!DOCTYPE html><html><head>
 <style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
 </head><body><script>
 (function(){
-    var OPEN_KEY = 'pav_sb_open';
-
-    function getDoc(){ return window.parent ? window.parent.document : document; }
-    function getSb(doc){ return doc.querySelector('section[data-testid="stSidebar"]'); }
+    var KEY = 'pav_sb_open';
+    function par(){ return window.parent ? window.parent : window; }
+    function pdoc(){ return par().document; }
 
     function isOpen(){
-        try{ return window.parent.sessionStorage.getItem(OPEN_KEY) !== 'false'; }
+        try{ var v = par().sessionStorage.getItem(KEY); return v !== 'false'; }
         catch(e){ return true; }
     }
     function setOpen(v){
-        try{ window.parent.sessionStorage.setItem(OPEN_KEY, v ? 'true' : 'false'); }
-        catch(e){}
+        try{ par().sessionStorage.setItem(KEY, v ? 'true' : 'false'); }catch(e){}
     }
-
-    function apply(doc){
-        var sb  = getSb(doc);
+    function apply(){
+        var doc = pdoc();
+        var sb  = doc.querySelector('section[data-testid="stSidebar"]');
         var btn = doc.getElementById('pav-sb-btn');
         if(!sb || !btn) return;
-        if(isOpen()){
+        var open = isOpen();
+        if(open){
             sb.classList.remove('pav-sb-closed');
             btn.classList.remove('pav-closed');
             btn.textContent = '◀';
-            btn.title = 'Fechar menu';
         } else {
             sb.classList.add('pav-sb-closed');
             btn.classList.add('pav-closed');
             btn.textContent = '▶';
-            btn.title = 'Abrir menu';
         }
     }
-
     function init(){
-        var doc = getDoc();
-        // Não duplica o botão
-        if(doc.getElementById('pav-sb-btn')){
-            apply(doc);
-            return;
+        var doc = pdoc();
+        var btn = doc.getElementById('pav-sb-btn');
+        if(!btn){
+            btn = doc.createElement('button');
+            btn.id = 'pav-sb-btn';
+            doc.body.appendChild(btn);
+            btn.addEventListener('click', function(e){
+                e.stopPropagation();
+                setOpen(!isOpen());
+                apply();
+            });
         }
-        var btn = doc.createElement('button');
-        btn.id = 'pav-sb-btn';
-        doc.body.appendChild(btn);
-
-        btn.addEventListener('click', function(e){
-            e.stopPropagation();
-            setOpen(!isOpen());
-            apply(doc);
-        });
-
-        apply(doc);
+        apply();
     }
-
-    // Roda imediatamente e após cada rerun do Streamlit
-    if(document.readyState === 'complete'){ init(); }
-    else { window.addEventListener('load', init); }
-    setTimeout(init, 100);
-    setTimeout(init, 500);
-    setTimeout(init, 1200);
+    if(document.readyState==='complete'){ init(); }
+    else{ window.addEventListener('load', init); }
+    setTimeout(init, 150);
+    setTimeout(init, 600);
+    setTimeout(init, 1500);
 })();
 </script></body></html>""", height=0)
 
