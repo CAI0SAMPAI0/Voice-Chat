@@ -24,6 +24,7 @@ st.set_page_config(
     page_title="PAV",
     page_icon="🎙️",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # Font Awesome
@@ -524,13 +525,10 @@ body {
 section[data-testid="stSidebar"] {
     background: #070c15 !important;
     border-right: 1px solid #1a2535 !important;
-    min-width: 220px !important;
-    max-width: 300px !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
     transition: all 0.28s cubic-bezier(.4,0,.2,1) !important;
-}
-/* Mobile */
-@media (max-width: 768px) {
-    section[data-testid="stSidebar"] { min-width: 0 !important; }
 }
 /* Padding interno da sidebar */
 section[data-testid="stSidebar"] > div:first-child {
@@ -540,60 +538,36 @@ section[data-testid="stSidebar"] > div:first-child {
     min-height: 100vh !important;
 }
 /* Remove gap excessivo entre elementos da sidebar */
-section[data-testid="stSidebar"] .stButton {
-    margin-bottom: 4px !important;
-}
-section[data-testid="stSidebar"] .block-container {
-    padding-top: 0 !important;
-}
-/* ---- Estiliza o botão NATIVO de colapso do Streamlit como seta ---- */
-/* Botão que fica dentro da sidebar (fecha) */
-[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"],
-[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button {
-    position: fixed !important;
-    top: 12px !important;
-    left: 268px !important;
-    z-index: 3000 !important;
-    width: 28px !important;
-    height: 28px !important;
-    border-radius: 50% !important;
-    background: #0f1824 !important;
-    border: 1px solid #1a2535 !important;
-    color: #e6edf3 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,.4) !important;
+section[data-testid="stSidebar"] .stButton { margin-bottom: 4px !important; }
+section[data-testid="stSidebar"] .block-container { padding-top: 0 !important; }
+
+/* Esconde APENAS os controles visuais nativos do Streamlit — mantemos o botão de colapso funcional mas invisível */
+[data-testid="stSidebarHeader"] { min-height: 0 !important; padding: 0 !important; overflow: hidden !important; height: 0 !important; }
+[data-testid="stSidebarCollapsedControl"] { opacity: 0 !important; pointer-events: none !important; }
+
+/* ---- Botão customizado de seta — delegará click ao botão nativo ---- */
+#pav-toggle-custom {
+    position: fixed;
+    top: 12px; left: 268px;
+    z-index: 3000;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #0f1824;
+    border: 1px solid #1a2535;
     display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 12px !important;
-    transition: background .2s !important;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,.5);
+    transition: background .2s, left .28s cubic-bezier(.4,0,.2,1);
+    color: #e6edf3;
+    font-size: 11px;
+    line-height: 1;
+    user-select: none;
 }
-[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"]:hover,
-[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button:hover {
-    background: #1a2535 !important;
-}
-/* Botão de reabrir que fica fora da sidebar (colapso) */
-[data-testid="stSidebarCollapsedControl"] button,
-[data-testid="collapsedControl"] button {
-    background: #0f1824 !important;
-    border: 1px solid #1a2535 !important;
-    color: #e6edf3 !important;
-    border-radius: 0 8px 8px 0 !important;
-    box-shadow: 2px 0 8px rgba(0,0,0,.4) !important;
-    transition: background .2s !important;
-}
-[data-testid="stSidebarCollapsedControl"] button:hover,
-[data-testid="collapsedControl"] button:hover {
-    background: #1a2535 !important;
-}
-/* Esconde apenas o header visual da sidebar (título), mantém o botão de fechar */
-[data-testid="stSidebarHeader"] {
-    padding: 0 !important;
-    min-height: 0 !important;
-}
-/* Esconde o logo/texto padrão do header mas não o botão */
-[data-testid="stSidebarHeader"] > div:not(:has(button)) {
-    display: none !important;
-}
+#pav-toggle-custom:hover { background: #1a2535; }
+/* Quando sidebar fechada, botão vai para a esquerda */
+#pav-toggle-custom.sidebar-closed { left: 8px !important; }
+
 /* ---- Layout de páginas internas (settings, history, dashboard) ---- */
 .pav-page {
     padding: 1.5rem 2rem;
@@ -605,13 +579,13 @@ div[data-testid="stButton"] > button {
     font-weight: 600 !important;
     transition: all .2s !important;
 }
-/* ---- Botão "Abrir conversa" no histórico — invisível mas clicável sobre o card ---- */
+/* ---- Botão "Abrir conversa" no histórico ---- */
 [data-testid="stButton"]:has(button[kind="secondary"]) button[kind="secondary"].hist-open-btn,
 .hist-open-overlay button {
     position: absolute !important;
     inset: 0 !important; width: 100% !important; height: 100% !important;
     opacity: 0 !important; cursor: pointer !important;
-    z-index: 20 !important; border: none !important;
+    z-index: 10 !important; border: none !important;
     background: transparent !important;
 }
 /* ---- Scrollbar ---- */
@@ -789,8 +763,71 @@ def show_sidebar() -> None:
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
 
-    # O fechamento da sidebar usa o botão nativo do Streamlit (igual ao app de referência).
-    # Não é necessário injetar botão customizado — o CSS acima já estiliza o botão nativo.
+    # Injeta botão customizado que DELEGA o click ao botão nativo do Streamlit.
+    # Isso sobrevive a reruns porque o Streamlit gerencia o estado do sidebar nativamente.
+    components.html("""<!DOCTYPE html><html><head>
+<style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
+</head><body><script>
+(function(){
+    function init(){
+        var doc = window.parent.document;
+        if(doc.getElementById('pav-toggle-custom')) return;
+
+        var btn = doc.createElement('button');
+        btn.id = 'pav-toggle-custom';
+        doc.body.appendChild(btn);
+
+        function isSidebarOpen(){
+            var sb = doc.querySelector('section[data-testid="stSidebar"]');
+            if(!sb) return false;
+            // Streamlit adiciona aria-expanded ou width colapsa — checamos o estilo computado
+            var w = sb.getBoundingClientRect().width;
+            return w > 50;
+        }
+
+        function updateBtn(){
+            var open = isSidebarOpen();
+            btn.textContent = open ? '◀' : '▶';
+            btn.style.left  = open ? '268px' : '8px';
+            btn.title       = open ? 'Fechar menu' : 'Abrir menu';
+        }
+
+        function clickNativeBtn(){
+            // Tenta o botão de fechar (dentro da sidebar)
+            var closeBtn = doc.querySelector('button[aria-label="Close sidebar"]');
+            // Tenta o botão de abrir (collapsed control)
+            var openBtn  = doc.querySelector('[data-testid="stSidebarCollapsedControl"] button')
+                        || doc.querySelector('[data-testid="collapsedControl"] button');
+            var target = isSidebarOpen() ? closeBtn : openBtn;
+            if(target){
+                target.click();
+            }
+        }
+
+        btn.addEventListener('click', function(e){
+            e.stopPropagation();
+            clickNativeBtn();
+            // Atualiza visual após a animação
+            setTimeout(updateBtn, 350);
+        });
+
+        // Observa mudanças na sidebar (rerun, resize) para manter seta correta
+        var obs = new MutationObserver(updateBtn);
+        var sb  = doc.querySelector('section[data-testid="stSidebar"]');
+        if(sb) obs.observe(sb, {attributes:true, attributeFilter:['style','class']});
+        obs.observe(doc.body, {childList:true, subtree:false});
+
+        updateBtn();
+        // Re-aplica após reruns do Streamlit
+        setInterval(updateBtn, 800);
+    }
+
+    if(document.readyState === 'complete'){ init(); }
+    else { window.addEventListener('load', init); }
+    setTimeout(init, 200);
+    setTimeout(init, 600);
+})();
+</script></body></html>""", height=0)
 
     with st.sidebar:
         # Avatar do aluno + nome
