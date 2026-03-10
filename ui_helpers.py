@@ -40,7 +40,8 @@ _STRINGS = {
         "settings":           "Configurações",
         "history":            "Histórico",
         "dashboard":          "Painel",
-        "new_conv":           "Nova conversa",
+        "voice_mode":         "Modo Voz",
+        "new_conv":           "Nova conversa de voz",
         "del_conv":           "Excluir",
         "tap_to_speak":       "Toque para falar",
         "tap_to_stop":        "Toque para parar",
@@ -98,7 +99,8 @@ _STRINGS = {
         "settings":           "Settings",
         "history":            "History",
         "dashboard":          "Dashboard",
-        "new_conv":           "New conversation",
+        "voice_mode":         "Voice Mode",
+        "new_conv":           "New voice chat",
         "del_conv":           "Delete",
         "tap_to_speak":       "Tap to speak",
         "tap_to_stop":        "Tap to stop",
@@ -156,7 +158,8 @@ _STRINGS = {
         "settings":           "Settings",
         "history":            "History",
         "dashboard":          "Dashboard",
-        "new_conv":           "New conversation",
+        "voice_mode":         "Voice Mode",
+        "new_conv":           "New voice chat",
         "del_conv":           "Delete",
         "tap_to_speak":       "Tap to speak",
         "tap_to_stop":        "Tap to stop",
@@ -373,40 +376,63 @@ def get_or_create_conv(username: str) -> str:
 # =============================================================================
 # CSS GLOBAL
 # =============================================================================
+_SB_W = 260   # sidebar width px
+
 def inject_global_css():
-    st.markdown("""<style>
-#MainMenu, footer, header { display: none !important; }
-[data-testid="stToolbar"] { display: none !important; }
-section[data-testid="stMain"] > div {
-    max-width: 100% !important; padding: 0 !important;
-}
-.main .block-container { max-width: 100% !important; padding: 0 !important; }
-html { height: -webkit-fill-available; }
-body { min-height: 100vh; min-height: -webkit-fill-available; }
-.stApp { min-height: 100vh; min-height: -webkit-fill-available; }
-section[data-testid="stSidebar"] {
+    st.markdown(f"""<style>
+/* ── Reset Streamlit ── */
+#MainMenu, footer, header {{ display: none !important; }}
+[data-testid="stToolbar"] {{ display: none !important; }}
+section[data-testid="stMain"] > div {{ max-width: 100% !important; padding: 0 !important; }}
+.main .block-container {{ max-width: 100% !important; padding: 0 !important; }}
+html {{ height: -webkit-fill-available; }}
+body {{ min-height: 100vh; min-height: -webkit-fill-available; }}
+.stApp {{ min-height: 100vh; min-height: -webkit-fill-available; }}
+
+/* ── Sidebar fixa ── */
+section[data-testid="stSidebar"] {{
     background: #070c15 !important;
     border-right: 1px solid #1a2535 !important;
-    width: 260px !important; min-width: 260px !important; max-width: 260px !important;
+    width: {_SB_W}px !important; min-width: {_SB_W}px !important; max-width: {_SB_W}px !important;
     position: fixed !important; top: 0 !important; left: 0 !important; bottom: 0 !important;
     z-index: 2000 !important;
     transition: transform 0.28s cubic-bezier(.4,0,.2,1) !important;
     transform: translateX(0) !important;
     overflow-y: auto !important; overflow-x: hidden !important;
-}
-section[data-testid="stSidebar"].pav-sb-closed { transform: translateX(-270px) !important; }
-section[data-testid="stSidebar"] > div:first-child {
+}}
+section[data-testid="stSidebar"].pav-sb-closed {{
+    transform: translateX(-{_SB_W + 10}px) !important;
+}}
+section[data-testid="stSidebar"] > div:first-child {{
     padding: 0 12px 16px !important;
     display: flex !important; flex-direction: column !important; min-height: 100vh !important;
-}
+}}
+
+/* ── Esconde controles nativos ── */
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"],
 button[aria-label="Close sidebar"],
 button[aria-label="Open sidebar"],
-[data-testid="stSidebarHeader"] { display: none !important; }
-section[data-testid="stSidebar"] .stButton { margin-bottom: 4px !important; }
-#pav-sb-btn {
-    position: fixed !important; top: 12px !important; left: 268px !important;
+[data-testid="stSidebarHeader"] {{ display: none !important; }}
+section[data-testid="stSidebar"] .stButton {{ margin-bottom: 4px !important; }}
+
+/* ── Conteúdo principal se ajusta à sidebar ── */
+/* Sidebar ABERTA: empurra o main para a direita */
+section[data-testid="stMain"] {{
+    margin-left: {_SB_W}px !important;
+    width: calc(100% - {_SB_W}px) !important;
+    transition: margin-left 0.28s cubic-bezier(.4,0,.2,1),
+                width      0.28s cubic-bezier(.4,0,.2,1) !important;
+}}
+/* Sidebar FECHADA: main ocupa tudo */
+body.pav-sb-closed section[data-testid="stMain"] {{
+    margin-left: 0 !important;
+    width: 100% !important;
+}}
+
+/* ── Botão seta ── */
+#pav-sb-btn {{
+    position: fixed !important; top: 12px !important; left: {_SB_W + 8}px !important;
     z-index: 9999 !important; width: 26px !important; height: 26px !important;
     border-radius: 50% !important; background: #0f1824 !important;
     border: 1px solid #1a2535 !important; color: #e6edf3 !important;
@@ -415,16 +441,18 @@ section[data-testid="stSidebar"] .stButton { margin-bottom: 4px !important; }
     box-shadow: 0 2px 8px rgba(0,0,0,.6) !important;
     transition: left 0.28s cubic-bezier(.4,0,.2,1), background .15s !important;
     user-select: none !important;
-}
-#pav-sb-btn:hover { background: #1a2535 !important; }
-#pav-sb-btn.pav-closed { left: 8px !important; }
-.pav-page { padding: 1.5rem 2rem; max-width: 820px; }
-div[data-testid="stButton"] > button {
+}}
+#pav-sb-btn:hover {{ background: #1a2535 !important; }}
+#pav-sb-btn.pav-closed {{ left: 8px !important; }}
+
+/* ── Páginas ── */
+.pav-page {{ padding: 1.5rem 2rem; max-width: 820px; }}
+div[data-testid="stButton"] > button {{
     border-radius: 12px !important; font-weight: 600 !important; transition: all .2s !important;
-}
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1a2535; border-radius: 4px; }
+}}
+::-webkit-scrollbar {{ width: 4px; }}
+::-webkit-scrollbar-track {{ background: transparent; }}
+::-webkit-scrollbar-thumb {{ background: #1a2535; border-radius: 4px; }}
 </style>""", unsafe_allow_html=True)
 
 
@@ -452,8 +480,12 @@ def show_sidebar() -> None:
         var btn = doc.getElementById('pav-sb-btn');
         if(!sb || !btn) return;
         var open = isOpen();
+        // Sidebar: slide in/out
         sb.classList.toggle('pav-sb-closed', !open);
-        btn.classList.toggle('pav-closed',   !open);
+        // Body: controla margin do main content
+        doc.body.classList.toggle('pav-sb-closed', !open);
+        // Botão seta
+        btn.classList.toggle('pav-closed', !open);
         btn.textContent = open ? '\u25c4' : '\u25ba';
     }
     function setup(){
@@ -481,7 +513,7 @@ def show_sidebar() -> None:
 """, unsafe_allow_html=True)
 
         nav_items = [
-            ("voice",    "🎙️ Voice Mode"),
+            ("voice",    f"🎙️ {t('voice_mode', lang)}"),
             ("settings", f"⚙️ {t('settings', lang)}"),
             ("history",  f"📄 {t('history', lang)}"),
         ]
@@ -497,7 +529,7 @@ def show_sidebar() -> None:
 
         if st.session_state.page == "voice":
             st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-            if st.button("➕ Nova conversa", use_container_width=True, key="new_conv_btn"):
+            if st.button(f"➕ {t('new_conv', lang)}", use_container_width=True, key="new_conv_btn"):
                 st.session_state.conv_id = new_conversation(username)
                 for k in ["_vm_history", "_vm_reply", "_vm_tts_b64", "_vm_user_said", "_vm_error", "_vm_last_upload"]:
                     st.session_state.pop(k, None)

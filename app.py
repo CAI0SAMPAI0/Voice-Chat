@@ -19,11 +19,11 @@ from ui_helpers import (
     js_save_session,
     SESSION_DEFAULTS,
 )
-from pages.login     import show_login
-from pages.voice     import show_voice
-from pages.settings  import show_settings
-from pages.history   import show_history
-from pages.dashboard import show_dashboard
+from src.login     import show_login
+from src.voice     import show_voice
+from src.settings  import show_settings
+from src.history   import show_history
+from src.dashboard import show_dashboard
 
 # ── Page config — deve ser a primeira chamada Streamlit ──────────────────────
 st.set_page_config(
