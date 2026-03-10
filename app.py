@@ -2,8 +2,7 @@ import os, json, base64
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
-import requests
-import time
+
 import streamlit as st
 import streamlit.components.v1 as components
 import anthropic
@@ -22,7 +21,7 @@ from tts import text_to_speech, tts_available
 
 # set_page_config DEVE ser a primeira chamada Streamlit
 st.set_page_config(
-    page_title="PAV",
+    page_title="Tati's Voice English Class",
     page_icon="🎙️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -278,7 +277,8 @@ TEACHING STYLE:
 - SHORT conversational responses for voice. Max 3 sentences.
 - End with ONE engaging question.
 - NO markdown, NO bullet points -- plain natural speech for TTS.
-- NEVER start uninvited. Wait for the student to speak first."""
+- NEVER start uninvited. Wait for the student to speak first.
+- NEVER use EMOTES"""
 
 # =============================================================================
 # SESSION STATE
@@ -417,32 +417,6 @@ def avatar_html(size: int = 52, speaking: bool = False) -> str:
         f'<div class="avatar-circle {cls}" '
         f'style="width:{size}px;height:{size}px;font-size:{int(size*.48)}px">🧑‍🏫</div>'
     )
-
-#for p in [Path(PHOTO_PATH), Path("assets/tati.png"), Path("assets/tati.jpg"),
- #             Path("assets/professor.jpg"), Path("assets/professor.png")]:
-  #      if p.exists():
-   #         ext = p.suffix.lstrip(".").lower()
-    #        mime = "jpeg" if ext in ("jpg","jpeg") else ext
-     #       return f"data:image/{mime};base64,{base64.b64encode(p.read_bytes()).decode()}"
-    #return ""
-
-#@st.cache_data(show_spinner=False)
-#def get_avatar_frames() -> dict:
- #   base_ = Path("assets")
- #   def _load(candidates):
- #       for c in candidates:
-#            p = base_ / c
-#            if p.exists():
-#                ext = p.suffix.lstrip(".").lower()
-#                mime = "jpeg" if ext in ("jpg","jpeg") else ext
-#                return f"data:image/{mime};base64,{base64.b64encode(p.read_bytes()).decode()}"
- #       return ""
- #   return {
-  #      "base":   _load(["tati.png","tati.jpg","avatar_base.png","professor.jpg"]),
- #       "closed": _load(["avatar_closed.png","tati_closed.png"]),
- #       "mid":    _load(["avatar_mid.png","tati_mid.png"]),
- #       "open":   _load(["avatar_open.png","tati_open.png"]),
- #   }
 
 def get_or_create_conv(username: str) -> str:
     if st.session_state.conv_id:
