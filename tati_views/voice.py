@@ -90,10 +90,12 @@ def process_voice(raw: bytes, conv_id: str) -> None:
 
     history.append({"role": "user", "content": txt})
     client = anthropic.Anthropic(api_key=API_KEY)
+    # Remove chaves extras (ex: tts_b64) — a API da Anthropic só aceita role + content
+    api_messages = [{"role": m["role"], "content": m["content"]} for m in history]
     resp   = client.messages.create(
         model="claude-haiku-4-5", max_tokens=400,
         system=SYSTEM_PROMPT + context,
-        messages=history,
+        messages=api_messages,
     )
     reply = resp.content[0].text
     history.append({"role": "assistant", "content": reply})
