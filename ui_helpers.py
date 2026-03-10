@@ -468,6 +468,20 @@ section[data-testid="stSidebar"] div[data-testid="stButton"] > button[data-testi
 ::-webkit-scrollbar {{ width: 4px; }}
 ::-webkit-scrollbar-track {{ background: transparent; }}
 ::-webkit-scrollbar-thumb {{ background: #1a2535; border-radius: 4px; }}
+
+/* Esconde microfone nativo do Streamlit globalmente */
+[data-testid="stAudioInput"],
+[data-testid="stAudioInput"] *,
+div:has(> [data-testid="stAudioInput"]) {{
+    position: fixed !important;
+    bottom: -9999px !important;
+    left: -9999px !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+}}
 </style>""", unsafe_allow_html=True)
 
 
