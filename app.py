@@ -506,9 +506,12 @@ section[data-testid="stSidebar"] {
     left: 0 !important;
     margin-left: 0 !important;
 }
-/* Padding interno da sidebar */
+/* Padding interno da sidebar — flex column p/ logout ficar no fundo */
 section[data-testid="stSidebar"] > div:first-child {
     padding: 0 12px 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
 }
 /* Esconde o « e todos os toggles nativos da sidebar */
 [data-testid="stSidebarCollapsedControl"],
@@ -766,14 +769,11 @@ def show_sidebar() -> None:
 </div>
 """, unsafe_allow_html=True)
 
-        # Logout fixo no fundo da sidebar via CSS
-        st.markdown("""<style>
-[data-testid="stSidebar"] [data-testid="stButton"]:last-of-type {
-    position: fixed !important;
-    bottom: 16px !important;
-    width: 236px !important;
-}
-</style>""", unsafe_allow_html=True)
+        # Separador + logout no fundo
+        st.markdown("""
+<div style="flex:1;min-height:24px;"></div>
+<hr style="border:none;border-top:1px solid #1a2535;margin:0 0 10px;"/>
+""", unsafe_allow_html=True)
 
         if st.button("🚪 " + t("logout", lang), use_container_width=True, key="sb_logout",
                      type="secondary"):
