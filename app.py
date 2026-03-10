@@ -1689,7 +1689,7 @@ def main():
   var par = window.parent ? window.parent.document : null;
   if(!par) return;
 
-  // Remove botão anterior se existir
+  // Remove instância anterior
   var old = par.getElementById('pav-sidebar-toggle');
   if(old) old.remove();
 
@@ -1697,46 +1697,65 @@ def main():
   var btn = par.createElement('button');
   btn.id = 'pav-sidebar-toggle';
   btn.title = 'Menu';
-  btn.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>';
+  btn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg>';
   par.body.appendChild(btn);
 
-  function findNativeBtn(){
-    // tenta vários seletores que o Streamlit usa
-    return par.querySelector('[data-testid="collapsedControl"] button') ||
-           par.querySelector('button[data-testid="collapsedControl"]') ||
-           par.querySelector('[aria-label="Open sidebar"]') ||
-           par.querySelector('[aria-label="Close sidebar"]') ||
-           par.querySelector('[data-testid="baseButton-headerNoPadding"]') ||
-           null;
+  function isSidebarOpen(){
+    var sb = par.querySelector('section[data-testid="stSidebar"]');
+    if(!sb) return false;
+    // Streamlit marca sidebar recolhida com aria-expanded=false ou width quase zero
+    var style = par.defaultView.getComputedStyle(sb);
+    var w = parseFloat(style.width || '0');
+    return w > 50;
+  }
+
+  function clickToggle(){
+    // Quando sidebar está FECHADA → botão fica em stSidebarCollapsedControl
+    var collapsed = par.querySelector('[data-testid="stSidebarCollapsedControl"] button');
+    if(collapsed){ collapsed.click(); return; }
+
+    // Quando sidebar está ABERTA → botão fica DENTRO da sidebar com aria-label
+    var openBtn = par.querySelector('section[data-testid="stSidebar"] button[aria-label="Close sidebar"]');
+    if(openBtn){ openBtn.click(); return; }
+
+    // Fallback genérico — qualquer botão com aria-label de sidebar
+    var generic = par.querySelector('button[aria-label="Close sidebar"]') ||
+                  par.querySelector('button[aria-label="Open sidebar"]');
+    if(generic){ generic.click(); return; }
+
+    // Último recurso: manipula a sidebar diretamente via CSS
+    var sb = par.querySelector('section[data-testid="stSidebar"]');
+    if(sb){
+      if(isSidebarOpen()){
+        sb.style.setProperty('margin-left', '-300px', 'important');
+        sb.style.setProperty('visibility', 'hidden', 'important');
+      } else {
+        sb.style.removeProperty('margin-left');
+        sb.style.removeProperty('visibility');
+      }
+    }
   }
 
   btn.addEventListener('click', function(){
-    var native = findNativeBtn();
-    if(native){
-      native.click();
-    } else {
-      // fallback: alterna largura da sidebar diretamente
-      var sb = par.querySelector('section[data-testid="stSidebar"]');
-      if(sb){
-        var collapsed = sb.style.display === 'none' || sb.offsetWidth < 10;
-        sb.style.display = collapsed ? '' : 'none';
-      }
-    }
-    // pequena animação no ícone
+    clickToggle();
     btn.style.transform = 'scale(.88)';
     setTimeout(function(){ btn.style.transform = ''; }, 150);
   });
 
-  // Estilo inline garantido (independe do CSS da página)
-  btn.setAttribute('style', [
-    'position:fixed','top:14px','left:10px','z-index:2147483647',
-    'width:36px','height:36px',
-    'background:#0f1824','border:1px solid #1a2535','border-radius:10px',
-    'display:flex','align-items:center','justify-content:center',
-    'cursor:pointer','box-shadow:0 2px 10px rgba(0,0,0,.6)',
-    'transition:background .15s,border-color .15s,transform .15s',
-    'padding:0','outline:none'
-  ].join(';'));
+  // Estilo inline — imune a qualquer CSS externo
+  function applyStyle(){
+    btn.style.cssText = [
+      'position:fixed','top:14px','left:10px','z-index:2147483647',
+      'width:36px','height:36px',
+      'background:#0f1824','border:1px solid #1a2535','border-radius:10px',
+      'display:flex !important','align-items:center','justify-content:center',
+      'cursor:pointer','box-shadow:0 2px 10px rgba(0,0,0,.6)',
+      'transition:background .15s,border-color .15s,transform .15s',
+      'padding:0','outline:none','visibility:visible','opacity:1'
+    ].join(';');
+    btn.querySelector('svg').style.cssText='width:18px;height:18px;fill:#8b949e;transition:fill .15s;display:block;';
+  }
+  applyStyle();
 
   btn.addEventListener('mouseenter', function(){
     btn.style.background='#1a2535';
@@ -1744,11 +1763,17 @@ def main():
     btn.querySelector('svg').style.fill='#f0a500';
   });
   btn.addEventListener('mouseleave', function(){
-    btn.style.background='#0f1824';
-    btn.style.borderColor='#1a2535';
-    btn.querySelector('svg').style.fill='#8b949e';
+    applyStyle();
   });
-  btn.querySelector('svg').style.cssText='width:18px;height:18px;fill:#8b949e;transition:fill .15s;';
+
+  // Garante que o estilo não seja sobrescrito por reruns do Streamlit
+  var styleObs = new MutationObserver(function(){
+    if(!par.getElementById('pav-sidebar-toggle')){
+      par.body.appendChild(btn);
+    }
+    applyStyle();
+  });
+  styleObs.observe(par.body, {childList:true, subtree:false});
 })();
 </script></body></html>""", height=1)
 
