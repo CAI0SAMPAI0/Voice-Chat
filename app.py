@@ -1045,7 +1045,6 @@ html,body{{
     100%{{box-shadow:0 0 0 0 rgba(224,92,42,0),0 4px 20px rgba(224,92,42,.3);}}
 }}
 .mic-hint{{font-size:.68rem;color:#4a5a6a;letter-spacing:.3px;}}
-.audio-controls{{display:flex;align-items:center;gap:8px;padding:8px 14px;margin-top:8px;background:#0d1420;border:1px solid #1a2535;border-radius:12px;flex-wrap:wrap;width:100%;box-sizing:border-box;}}
 #play-btn{{background:#1a2535;color:#e6edf3;border:1px solid #252d3d;border-radius:8px;padding:5px 14px;font-size:.78rem;cursor:pointer;white-space:nowrap;transition:background .15s;font-family:inherit;}}
 #play-btn:hover{{background:#252d3d;}}
 .ctrl-label{{font-size:.68rem;color:#4a5a6a;white-space:nowrap;}}
@@ -1060,6 +1059,16 @@ input[type=range].ctrl-range::-webkit-slider-thumb{{-webkit-appearance:none;widt
     max-width:560px;width:100%;text-align:center;
     flex-shrink:0;
 }}
+
+.bubble-play-btn{{background:none;border:1px solid #1a2535;border-radius:14px;color:#8b949e;font-size:.68rem;padding:3px 10px;cursor:pointer;margin-top:4px;margin-bottom:6px;transition:all .15s;font-family:inherit;display:block;}}
+.bubble-play-btn:hover{{border-color:{ring_color};color:{ring_color};}}
+.audio-controls{{display:flex;align-items:center;gap:8px;padding:8px 14px;margin-top:8px;background:#0d1420;border:1px solid #1a2535;border-radius:12px;flex-wrap:wrap;width:100%;box-sizing:border-box;}}
+#play-btn{{background:#1a2535;color:#e6edf3;border:1px solid #252d3d;border-radius:8px;padding:5px 14px;font-size:.78rem;cursor:pointer;white-space:nowrap;transition:background .15s;font-family:inherit;}}
+#play-btn:hover{{background:#252d3d;}}
+.ctrl-label{{font-size:.68rem;color:#4a5a6a;white-space:nowrap;}}
+input[type=range].ctrl-range{{-webkit-appearance:none;width:72px;height:4px;background:#1a2535;border-radius:2px;outline:none;cursor:pointer;}}
+input[type=range].ctrl-range::-webkit-slider-thumb{{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:{ring_color};cursor:pointer;}}
+.ctrl-val{{font-size:.68rem;color:#8b949e;min-width:28px;text-align:left;}}
 </style>
 </head><body>
 <div class="app" id="app">
@@ -1212,11 +1221,13 @@ function playTTS(b64){{
     var audio = new Audio('data:audio/mp3;base64,'+b64);
     audio.volume       = getVolume();
     audio.playbackRate = getSpeed();
+    audio._srcB64      = b64;
     currentAudio = audio;
     audio.onplay  = function(){{ startMouthAnim(audio); updatePlayBtn(true); }};
     audio.onended = function(){{ stopMouthAnim(); ring.classList.remove('active'); statusTxt.textContent='Online'; currentAudio=null; updatePlayBtn(false); }};
     audio.onerror = function(){{ stopMouthAnim(); ring.classList.remove('active'); statusTxt.textContent='Online'; updatePlayBtn(false); }};
-    audio.play().catch(function(){{
+    audio.play().catch(function(e){{
+        console.warn('play() blocked:', e);
         stopMouthAnim(); ring.classList.remove('active'); updatePlayBtn(false);
     }});
 }}
@@ -1242,7 +1253,7 @@ function onPlayBtnClick(){{
 }}
 
 // ---- Historico de bolhas ----
-function addBubble(role, text){{
+function addBubble(role, text, b64){{
     var label = document.createElement('div');
     label.className='bubble-label'+(role==='user'?' right':'');
     label.textContent = role==='user' ? 'Voce' : '{PROF_NAME}';
@@ -1251,6 +1262,28 @@ function addBubble(role, text){{
     bub.textContent = text;
     histWrap.appendChild(label);
     histWrap.appendChild(bub);
+    // Botão ▶ Ouvir abaixo de cada mensagem do bot
+    if(role === 'bot' && b64){{
+        var pbtn = document.createElement('button');
+        pbtn.className = 'bubble-play-btn';
+        pbtn.textContent = '▶ Ouvir';
+        pbtn.setAttribute('data-b64', b64);
+        pbtn.onclick = function(){{
+            var isPlaying = currentAudio && !currentAudio.paused && currentAudio._srcB64 === b64;
+            if(isPlaying){{
+                stopTTS();
+                pbtn.textContent = '▶ Ouvir';
+            }} else {{
+                // Reset todos os outros botões
+                document.querySelectorAll('.bubble-play-btn').forEach(function(b){{ b.textContent='▶ Ouvir'; }});
+                playTTS(b64);
+                pbtn.textContent = '⏹ Parar';
+                // Ao terminar, reseta este botão
+                if(currentAudio) currentAudio.addEventListener('ended', function(){{ pbtn.textContent='▶ Ouvir'; }});
+            }}
+        }};
+        histWrap.appendChild(pbtn);
+    }}
     histWrap.scrollTop=histWrap.scrollHeight;
 }}
 
@@ -1264,11 +1297,17 @@ if(VM_ERROR){{
     errBox.style.display='none';
     // Renderiza todo o histórico acumulado
     if(HISTORY && HISTORY.length > 0){{
-        HISTORY.forEach(function(msg){{
-            addBubble(msg.role === 'user' ? 'user' : 'bot', msg.content);
+        HISTORY.forEach(function(msg, idx){{
+            var isLast = idx === HISTORY.length - 1;
+            var role   = msg.role === 'user' ? 'user' : 'bot';
+            var b64    = (role === 'bot' && isLast && TTS_B64) ? TTS_B64 : null;
+            addBubble(role, msg.content, b64);
         }});
     }}
-    // Autoplay removido — usuário escolhe quando ouvir
+    // Autoplay da última resposta da IA
+    if(TTS_B64){{
+        setTimeout(function(){{ playTTS(TTS_B64); }}, 300);
+    }}
 }}
 
 // ---- Mic: ativa gravar no Streamlit ----
