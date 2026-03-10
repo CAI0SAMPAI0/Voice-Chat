@@ -268,6 +268,7 @@ _DEFAULTS = {
     "_vm_user_said": "",
     "_vm_error":   "",
     "_vm_last_upload": None,
+    "_sidebar_open": True,
 }
 for k, v in _DEFAULTS.items():
     if k not in st.session_state:
@@ -528,6 +529,11 @@ div[data-testid="stButton"] > button {
     font-weight: 600 !important;
     transition: all .2s !important;
 }
+/* ---- Esconde botão nativo do Streamlit (usamos o nosso) ---- */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
+    display: none !important;
+}
 /* ---- Scrollbar ---- */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -697,6 +703,8 @@ p{{font-size:.72rem;color:#3a4e5e;text-align:center;}}
 # SIDEBAR (quando logado)
 # =============================================================================
 def show_sidebar() -> None:
+    if not st.session_state.get("_sidebar_open", True):
+        return
     user     = st.session_state.user
     username = user["username"]
     profile  = user.get("profile", {})
@@ -1681,90 +1689,77 @@ def main():
 
     show_sidebar()
 
-    # Botão flutuante — controla sidebar diretamente via CSS (sem depender de botão nativo)
-    components.html("""<!DOCTYPE html><html><head>
-<style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
-</head><body><script>
+    # ── Controle de visibilidade da sidebar via session_state ──────────
+    sidebar_open = st.session_state.get("_sidebar_open", True)
+
+    # CSS que esconde/mostra a sidebar e ajusta o conteúdo
+    if not sidebar_open:
+        st.markdown("""<style>
+section[data-testid="stSidebar"] { display: none !important; }
+section[data-testid="stMain"],
+.main { margin-left: 0 !important; width: 100% !important; }
+</style>""", unsafe_allow_html=True)
+
+    # Botão hamburger flutuante usando st.markdown + form trick
+    # Posicionado via CSS fixed, dispara rerun via link de query param
+    toggle_label = "✕" if sidebar_open else "☰"
+    toggle_help  = "Fechar menu" if sidebar_open else "Abrir menu"
+    st.markdown(f"""
+<style>
+#pav-toggle-wrap {{
+    position: fixed; top: 12px; left: 10px; z-index: 99999;
+}}
+#pav-toggle-wrap button {{
+    width: 36px !important; height: 36px !important;
+    min-height: 0 !important;
+    background: #0f1824 !important;
+    border: 1px solid #1a2535 !important;
+    border-radius: 10px !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    color: #8b949e !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,.5) !important;
+    transition: background .15s, border-color .15s !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}}
+#pav-toggle-wrap button:hover {{
+    background: #1a2535 !important;
+    border-color: #f0a500 !important;
+    color: #f0a500 !important;
+}}
+</style>
+<div id="pav-toggle-wrap"></div>
+""", unsafe_allow_html=True)
+
+    with st.container():
+        # Posiciona o botão dentro do wrapper via JS após render
+        if st.button(toggle_label, key="sb_toggle", help=toggle_help):
+            st.session_state["_sidebar_open"] = not sidebar_open
+            st.rerun()
+
+    # Move o botão para o wrapper fixo via JS
+    components.html("""<!DOCTYPE html><html><body><script>
 (function(){
   var par = window.parent ? window.parent.document : null;
   if(!par) return;
-
-  // Injeta <style> de controle da sidebar no documento pai (se ainda não existe)
-  if(!par.getElementById('pav-sb-style')){
-    var s = par.createElement('style');
-    s.id = 'pav-sb-style';
-    s.textContent = '';
-    par.head.appendChild(s);
-  }
-
-  // Remove botão anterior
-  var old = par.getElementById('pav-sidebar-toggle');
-  if(old) old.remove();
-
-  // Estado: sidebar aberta ou fechada
-  // Lê do atributo data-pav-sb do body (persiste entre reruns do Streamlit)
-  var isOpen = par.body.getAttribute('data-pav-sb') !== 'closed';
-
-  function getSidebar(){
-    return par.querySelector('section[data-testid="stSidebar"]');
-  }
-
-  function applyState(open){
-    var sb = getSidebar();
-    if(!sb) return;
-    var style = par.getElementById('pav-sb-style');
-    if(open){
-      style.textContent = '';
-      sb.style.removeProperty('display');
-      sb.style.removeProperty('width');
-      sb.style.removeProperty('min-width');
-      sb.style.removeProperty('overflow');
-      sb.style.removeProperty('visibility');
-      par.body.setAttribute('data-pav-sb','open');
-    } else {
-      style.textContent =
-        'section[data-testid="stSidebar"]{display:none!important;}' +
-        'section[data-testid="stMain"]{margin-left:0!important;width:100%!important;}';
-      par.body.setAttribute('data-pav-sb','closed');
+  setTimeout(function(){
+    var wrap = par.getElementById('pav-toggle-wrap');
+    // Encontra o botão com key sb_toggle — é o último button com esse texto
+    var btns = par.querySelectorAll('[data-testid="stButton"] button');
+    var toggleBtn = null;
+    btns.forEach(function(b){
+      if(b.textContent.trim() === '\u2630' || b.textContent.trim() === '\u2715'){
+        toggleBtn = b;
+      }
+    });
+    if(wrap && toggleBtn){
+      var parent = toggleBtn.closest('[data-testid="stButton"]');
+      if(parent) wrap.appendChild(parent);
     }
-    isOpen = open;
-  }
-
-  // Cria botão flutuante
-  var btn = par.createElement('button');
-  btn.id = 'pav-sidebar-toggle';
-  btn.title = 'Menu';
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="2.2" rx="1.1" fill="#8b949e"/><rect x="3" y="10.9" width="18" height="2.2" rx="1.1" fill="#8b949e"/><rect x="3" y="16.8" width="18" height="2.2" rx="1.1" fill="#8b949e"/></svg>';
-  par.body.appendChild(btn);
-
-  btn.style.cssText = 'position:fixed;top:14px;left:10px;z-index:2147483647;width:36px;height:36px;background:#0f1824;border:1px solid #1a2535;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.6);transition:background .15s,border-color .15s,transform .15s;padding:0;outline:none;';
-
-  btn.addEventListener('click', function(){
-    applyState(!isOpen);
-    btn.style.transform='scale(.88)';
-    setTimeout(function(){btn.style.transform='';},150);
-  });
-
-  btn.addEventListener('mouseenter', function(){
-    btn.style.background='#1a2535';
-    btn.style.borderColor='#f0a500';
-    btn.querySelectorAll('rect').forEach(function(r){r.setAttribute('fill','#f0a500');});
-  });
-  btn.addEventListener('mouseleave', function(){
-    btn.style.background='#0f1824';
-    btn.style.borderColor='#1a2535';
-    btn.querySelectorAll('rect').forEach(function(r){r.setAttribute('fill','#8b949e');});
-  });
-
-  // Aplica estado inicial
-  applyState(isOpen);
-
-  // Mantém botão no DOM durante reruns do Streamlit
-  new MutationObserver(function(){
-    if(!par.getElementById('pav-sidebar-toggle')){
-      par.body.appendChild(btn);
-    }
-  }).observe(par.body, {childList:true});
+  }, 50);
 })();
 </script></body></html>""", height=1)
 
