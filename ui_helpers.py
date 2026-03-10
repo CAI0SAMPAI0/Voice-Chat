@@ -450,6 +450,21 @@ body.pav-sb-closed section[data-testid="stMain"] {{
 div[data-testid="stButton"] > button {{
     border-radius: 12px !important; font-weight: 600 !important; transition: all .2s !important;
 }}
+
+/* ── Botão primário (Voice Mode ativo) → roxo ── */
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="primary"],
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button[data-testid="baseButton-primary"] {{
+    background: linear-gradient(135deg, #6c3fc5, #8b5cf6) !important;
+    border: 1px solid #7c4dcc !important;
+    color: #fff !important;
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.35) !important;
+}}
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="primary"]:hover,
+section[data-testid="stSidebar"] div[data-testid="stButton"] > button[data-testid="baseButton-primary"]:hover {{
+    background: linear-gradient(135deg, #7c4dcc, #9d6ff7) !important;
+    box-shadow: 0 0 18px rgba(139, 92, 246, 0.5) !important;
+}}
+
 ::-webkit-scrollbar {{ width: 4px; }}
 ::-webkit-scrollbar-track {{ background: transparent; }}
 ::-webkit-scrollbar-thumb {{ background: #1a2535; border-radius: 4px; }}
