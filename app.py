@@ -510,9 +510,10 @@ section[data-testid="stSidebar"] {
 section[data-testid="stSidebar"] > div:first-child {
     padding: 0 12px 16px !important;
 }
-/* Esconde o botão « de colapsar e qualquer toggle nativo */
+/* Esconde o « e todos os toggles nativos da sidebar */
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"],
+[data-testid="stSidebarHeader"],
 button[aria-label="Close sidebar"],
 button[aria-label="Open sidebar"],
 [data-testid="stSidebar"] [data-testid="baseButton-headerNoPadding"] {
@@ -765,10 +766,16 @@ def show_sidebar() -> None:
 </div>
 """, unsafe_allow_html=True)
 
-        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+        # Logout fixo no fundo da sidebar via CSS
+        st.markdown("""<style>
+[data-testid="stSidebar"] [data-testid="stButton"]:last-of-type {
+    position: fixed !important;
+    bottom: 16px !important;
+    width: 236px !important;
+}
+</style>""", unsafe_allow_html=True)
 
-        # Sair
-        if st.button("&#128682; " + t("logout", lang), use_container_width=True, key="sb_logout",
+        if st.button("🚪 " + t("logout", lang), use_container_width=True, key="sb_logout",
                      type="secondary"):
             _logout(); st.rerun()
 
