@@ -34,6 +34,24 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Meta viewport com viewport-fit=cover para mobile (esconde barra do browser)
+st.markdown("""
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+/* Força uso de dvh no mobile para sumir a barra do browser */
+html { height: 100dvh; }
+body { min-height: 100dvh; background: #060a10 !important; }
+.stApp { min-height: 100dvh !important; }
+/* Padding para safe area no iOS (notch / home bar) */
+@supports(padding: max(0px)) {
+    .mic-footer { padding-bottom: max(20px, env(safe-area-inset-bottom)) !important; }
+}
+</style>
+""", unsafe_allow_html=True)
+
 # =============================================================================
 # INIT DB
 # =============================================================================
@@ -491,6 +509,18 @@ section[data-testid="stMain"] > div {
     max-width: 100% !important;
     padding: 0 !important;
 }
+/* ---- Mobile: esconde barra do browser e ocupa tela cheia ---- */
+html {
+    height: -webkit-fill-available;
+}
+body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+}
+.stApp {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+}
 /* ---- Sidebar — sempre visível e expandida ---- */
 section[data-testid="stSidebar"] {
     display: flex !important;
@@ -854,7 +884,7 @@ def show_voice() -> None:
 body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>section,[data-testid="stMain"]{background:#060a10!important;}
 section[data-testid="stMain"]>div,.main .block-container,section[data-testid="stMain"]{padding:0!important;margin:0!important;overflow:hidden!important;max-height:100vh!important;}
 div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:0!important;padding:0!important;margin:0!important;}
-html{overflow:hidden!important;}
+html,body{overflow:hidden!important;}
 </style>""", unsafe_allow_html=True)
 
     conv_id = get_or_create_conv(username)
@@ -1420,6 +1450,13 @@ def show_settings() -> None:
     profile  = user.get("profile", {})
     lang     = profile.get("language", "pt-BR")
 
+    # Restaura scroll (removido pelo modo voz)
+    st.markdown("""<style>
+html,body{overflow:auto!important;}
+section[data-testid="stMain"]>div,.main .block-container,section[data-testid="stMain"]{overflow:auto!important;max-height:none!important;}
+div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:revert!important;}
+</style>""", unsafe_allow_html=True)
+
     st.markdown("<div class='pav-page'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#e6edf3;margin-bottom:1rem;'>&#9881; {t('settings',lang)}</h2>",
                 unsafe_allow_html=True)
@@ -1650,6 +1687,13 @@ def show_history() -> None:
     profile  = user.get("profile", {})
     lang     = profile.get("language", "pt-BR")
 
+    # Restaura scroll (removido pelo modo voz)
+    st.markdown("""<style>
+html,body{overflow:auto!important;}
+section[data-testid="stMain"]>div,.main .block-container,section[data-testid="stMain"]{overflow:auto!important;max-height:none!important;}
+div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:revert!important;}
+</style>""", unsafe_allow_html=True)
+
     st.markdown("<div class='pav-page'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#e6edf3;margin-bottom:1rem;'>&#128196; {t('history',lang)}</h2>",
                 unsafe_allow_html=True)
@@ -1700,6 +1744,13 @@ def show_dashboard() -> None:
     user    = st.session_state.user
     profile = user.get("profile", {})
     lang    = profile.get("language", "pt-BR")
+
+    # Restaura scroll (removido pelo modo voz)
+    st.markdown("""<style>
+html,body{overflow:auto!important;}
+section[data-testid="stMain"]>div,.main .block-container,section[data-testid="stMain"]{overflow:auto!important;max-height:none!important;}
+div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:revert!important;}
+</style>""", unsafe_allow_html=True)
 
     st.markdown("<div class='pav-page'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#e6edf3;margin-bottom:1rem;'>&#128202; {t('dashboard',lang)}</h2>",
