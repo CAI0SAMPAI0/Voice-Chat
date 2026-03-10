@@ -140,6 +140,7 @@ body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"]{background
 section[data-testid="stMain"]>div,.main .block-container{padding:0!important;margin:0!important;overflow:hidden!important;max-height:100vh!important;}
 div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:0!important;padding:0!important;margin:0!important;}
 html,body{overflow:hidden!important;}
+[data-testid="stAudioInput"]{position:fixed!important;bottom:-999px!important;left:-9999px!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;}
 </style>""", unsafe_allow_html=True)
 
     conv_id = get_or_create_conv(username)
