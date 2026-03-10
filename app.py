@@ -19,11 +19,11 @@ from ui_helpers import (
     js_save_session,
     SESSION_DEFAULTS,
 )
-from views.login     import show_login
-from views.voice     import show_voice
-from views.settings  import show_settings
-from views.history   import show_history
-from views.dashboard import show_dashboard
+from tati_views.login     import show_login
+from tati_views.voice     import show_voice
+from tati_views.settings  import show_settings
+from tati_views.history   import show_history
+from tati_views.dashboard import show_dashboard
 
 # ── Page config — deve ser a primeira chamada Streamlit ──────────────────────
 st.set_page_config(
