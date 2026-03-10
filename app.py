@@ -528,18 +528,15 @@ section[data-testid="stSidebar"] {
     width: 260px !important;
     min-width: 260px !important;
     max-width: 260px !important;
-    overflow: hidden !important;
-    transition: width 0.28s cubic-bezier(.4,0,.2,1),
-                min-width 0.28s cubic-bezier(.4,0,.2,1),
-                opacity 0.28s ease !important;
-    flex-shrink: 0 !important;
+    position: fixed !important;
+    top: 0 !important; left: 0 !important; bottom: 0 !important;
+    z-index: 2000 !important;
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1) !important;
+    transform: translateX(0) !important;
 }
-/* Fecha a sidebar via CSS — largura zero, sem afetar o DOM interno */
+/* Fechada: desliza para fora à esquerda */
 section[data-testid="stSidebar"].pav-sb-closed {
-    width: 0px !important;
-    min-width: 0px !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
+    transform: translateX(-270px) !important;
 }
 /* Padding interno */
 section[data-testid="stSidebar"] > div:first-child {
@@ -547,36 +544,33 @@ section[data-testid="stSidebar"] > div:first-child {
     display: flex !important;
     flex-direction: column !important;
     min-height: 100vh !important;
-    width: 260px !important;
-    overflow: hidden !important;
 }
-/* ---- Esconde APENAS os botões nativos de colapso — NÃO o stSidebarHeader ---- */
+/* Empurra o conteúdo principal para dar espaço à sidebar aberta */
+[data-testid="stAppViewContainer"] > section:not([data-testid="stSidebar"]),
+[data-testid="stMain"] {
+    margin-left: 260px !important;
+    transition: margin-left 0.28s cubic-bezier(.4,0,.2,1) !important;
+}
+/* Quando sidebar fechada, conteúdo ocupa tela toda */
+body.pav-sb-closed [data-testid="stAppViewContainer"] > section:not([data-testid="stSidebar"]),
+body.pav-sb-closed [data-testid="stMain"] {
+    margin-left: 0 !important;
+}
+/* ---- Esconde APENAS botões nativos de colapso ---- */
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"],
 button[aria-label="Close sidebar"],
-button[aria-label="Open sidebar"] {
-    display: none !important;
-}
-/* Esconde só o botão dentro do header, não o header em si */
-[data-testid="stSidebarHeader"] button,
-[data-testid="stSidebarHeader"] [data-testid="baseButton-headerNoPadding"] {
-    display: none !important;
-}
-/* Remove o espaço vazio que o stSidebarHeader deixa */
+button[aria-label="Open sidebar"],
 [data-testid="stSidebarHeader"] {
-    padding: 0 !important;
-    min-height: 0 !important;
-    height: 0 !important;
-    overflow: hidden !important;
+    display: none !important;
 }
-/* Remove gap excessivo entre elementos da sidebar */
+/* Remove gap excessivo */
 section[data-testid="stSidebar"] .stButton { margin-bottom: 4px !important; }
 section[data-testid="stSidebar"] .block-container { padding-top: 0 !important; }
-/* ---- Botão de seta customizado ---- */
+/* ---- Botão de seta ---- */
 #pav-sb-btn {
     position: fixed !important;
-    top: 12px !important;
-    left: 268px !important;
+    top: 12px !important; left: 268px !important;
     z-index: 9999 !important;
     width: 26px !important; height: 26px !important;
     border-radius: 50% !important;
@@ -586,8 +580,7 @@ section[data-testid="stSidebar"] .block-container { padding-top: 0 !important; }
     font-size: 11px !important;
     cursor: pointer !important;
     display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    align-items: center !important; justify-content: center !important;
     box-shadow: 0 2px 8px rgba(0,0,0,.6) !important;
     transition: left 0.28s cubic-bezier(.4,0,.2,1), background .15s !important;
     user-select: none !important;
@@ -787,41 +780,39 @@ def show_sidebar() -> None:
     lang     = profile.get("language", "pt-BR")
     page     = st.session_state.page
 
-    # Botão de toggle que controla sidebar via CSS class — nunca dispara o collapse nativo.
-    # Estado salvo no sessionStorage do parent para sobreviver a reruns.
     components.html("""<!DOCTYPE html><html><head>
 <style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style>
 </head><body><script>
 (function(){
     var KEY = 'pav_sb_open';
-    function par(){ return window.parent ? window.parent : window; }
-    function pdoc(){ return par().document; }
-
+    function p(){ return window.parent || window; }
+    function pd(){ return p().document; }
     function isOpen(){
-        try{ var v = par().sessionStorage.getItem(KEY); return v !== 'false'; }
-        catch(e){ return true; }
+        try{ return p().sessionStorage.getItem(KEY) !== 'false'; }catch(e){ return true; }
     }
     function setOpen(v){
-        try{ par().sessionStorage.setItem(KEY, v ? 'true' : 'false'); }catch(e){}
+        try{ p().sessionStorage.setItem(KEY, v?'true':'false'); }catch(e){}
     }
     function apply(){
-        var doc = pdoc();
+        var doc = pd();
         var sb  = doc.querySelector('section[data-testid="stSidebar"]');
         var btn = doc.getElementById('pav-sb-btn');
         if(!sb || !btn) return;
         var open = isOpen();
         if(open){
             sb.classList.remove('pav-sb-closed');
+            doc.body.classList.remove('pav-sb-closed');
             btn.classList.remove('pav-closed');
             btn.textContent = '◀';
         } else {
             sb.classList.add('pav-sb-closed');
+            doc.body.classList.add('pav-sb-closed');
             btn.classList.add('pav-closed');
             btn.textContent = '▶';
         }
     }
     function init(){
-        var doc = pdoc();
+        var doc = pd();
         var btn = doc.getElementById('pav-sb-btn');
         if(!btn){
             btn = doc.createElement('button');
@@ -837,9 +828,7 @@ def show_sidebar() -> None:
     }
     if(document.readyState==='complete'){ init(); }
     else{ window.addEventListener('load', init); }
-    setTimeout(init, 150);
-    setTimeout(init, 600);
-    setTimeout(init, 1500);
+    setTimeout(init,100); setTimeout(init,500); setTimeout(init,1200);
 })();
 </script></body></html>""", height=0)
 
