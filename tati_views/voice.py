@@ -433,7 +433,8 @@ input[type=range].ctrl-range::-moz-range-thumb{{
         <div class="avatar-wrap">
             <div class="avatar-ring" id="ring"></div>
             <img id="avImg" class="avatar-img" src="" alt="" style="display:none;"
-                 onerror="this.style.display='none';document.getElementById('avEmoji').style.display='flex';">
+                onerror="this.onerror=null; if(typeof PHOTO!=='undefined'&&PHOTO){this.src=PHOTO;}else{this.style.display='none';document.getElementById('avEmoji').style.display='flex';}">
+
             <div id="avEmoji" class="avatar-emoji">&#129489;&#8205;&#127979;</div>
         </div>
         <div class="prof-name" id="profName"></div>
@@ -505,13 +506,20 @@ micHint.textContent  = TAP_SPEAK;
 // CONTROLE DE FRAME
 // ══════════════════════════════════════════════════════════════════════════════
 var _lastFrame = '';
-function setFrame(src){{
-    if(!src || src === _lastFrame) return;
+function setFrame(src) {
+    if (!src) {
+        // frame vazio → cai no fallback
+        if (PHOTO) { avImg.src = PHOTO; avImg.style.display = 'block'; avEmoji.style.display = 'none'; }
+        else        { avImg.style.display = 'none'; avEmoji.style.display = 'flex'; }
+        _lastFrame = '';
+        return;
+    }
+    if (src === _lastFrame) return;
     _lastFrame = src;
     avImg.src  = src;
     avImg.style.display   = 'block';
     avEmoji.style.display = 'none';
-}}
+}
 // Usa foto estática como fallback quando não há animação
 setFrame(HAS_ANIM ? F_NORMAL : (PHOTO || ''));
 if(!HAS_ANIM && PHOTO){{
