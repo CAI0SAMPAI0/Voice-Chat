@@ -236,18 +236,17 @@ def get_tati_mini_b64() -> str:
 
 def get_avatar_frames() -> dict:
     import os
-    _base = Path(__file__).parent
-    _cwd = Path(os.getcwd())
-    def _load(candidates):
-        for p in candidates:
-            p = Path(p)
+    _base = Path(__file__).resolve().parent
+    _cwd  = Path(os.getcwd()).resolve()
+
+    def _load(filename: str) -> str:
+        """Tenta carregar filename a partir de múltiplas bases."""
+        for base in [_cwd, _base, _cwd.parent, _base.parent]:
+            p = base / "assets" / filename
             if p.exists():
                 return f"data:image/png;base64,{base64.b64encode(p.read_bytes()).decode()}"
-            # tenta também relativo ao CWD
-            p2 = _cwd / p
-            if p2.exists():
-                return f"data:image/png;base64,{base64.b64encode(p2.read_bytes()).decode()}"
         return ""
+
     return {
         "normal":     _load("avatar_tati_normal.png"),
         "meio":       _load("avatar_tati_meio.png"),
