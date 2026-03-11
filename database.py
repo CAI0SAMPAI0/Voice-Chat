@@ -1,9 +1,16 @@
 """
-database.py — Teacher Tati · Supabase (PostgreSQL) backend v3
-Bugs corrigidos:
-  - get_user_avatar_db: variável 'path' não era construída antes do download
-  - get_all_students_stats: chave retornada era 'messages', dashboard lia 'total_messages'
-  - list_conversations: chave retornada era 'count', history lia 'msg_count'
+database.py — Teacher Tati · Supabase (PostgreSQL) backend
+Criptografia: bcrypt (rounds=12) com migração automática de hashes SHA-256 legados.
+
+Compatibilidade:
+  - Senhas antigas (SHA-256 hex) continuam funcionando no login.
+  - Na primeira autenticação bem-sucedida, o hash é migrado automaticamente para bcrypt.
+  - Novas contas já nascem com bcrypt.
+
+Bugs corrigidos do arquivo original:
+  - get_user_avatar_db: 'path' não era construído antes do download  → corrigido
+  - get_all_students_stats: chave 'messages' → padronizado 'total_messages'
+  - list_conversations: chave 'count' → padronizado 'msg_count'
 """
 
 import os
@@ -11,6 +18,7 @@ import hashlib
 import secrets
 from datetime import datetime
 
+import bcrypt
 from supabase import create_client, Client
 
 
@@ -26,13 +34,59 @@ def get_client() -> Client:
     return create_client(url, key)
 
 
-# ── Senha ─────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# CRIPTOGRAFIA DE SENHA
+# ══════════════════════════════════════════════════════════════════════════════
 
-def hash_password(p: str) -> str:
-    return hashlib.sha256(p.encode()).hexdigest()
+def hash_password(plain: str) -> str:
+    """Gera hash bcrypt (rounds=12) de uma senha em texto puro."""
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt(rounds=12)).decode()
 
 
-# ── Init DB ───────────────────────────────────────────────────────────────────
+def _sha256_hex(plain: str) -> str:
+    """Hash SHA-256 legado — usado APENAS para checar senhas antigas."""
+    return hashlib.sha256(plain.encode()).hexdigest()
+
+
+def _verify_password(plain: str, stored: str) -> bool:
+    """
+    Verifica a senha contra o hash armazenado.
+    Aceita tanto bcrypt (começa com '$2b$') quanto SHA-256 (hex de 64 chars).
+    """
+    if not plain or not stored:
+        return False
+
+    # ── bcrypt ────────────────────────────────────────────────────────────────
+    if stored.startswith("$2b$") or stored.startswith("$2a$"):
+        try:
+            return bcrypt.checkpw(plain.encode(), stored.encode())
+        except Exception:
+            return False
+
+    # ── SHA-256 legado (hex 64 chars) ─────────────────────────────────────────
+    if len(stored) == 64:
+        return secrets.compare_digest(stored, _sha256_hex(plain))
+
+    return False
+
+
+def _needs_migration(stored: str) -> bool:
+    """Retorna True se o hash armazenado é SHA-256 e precisa ser migrado."""
+    return len(stored) == 64 and not stored.startswith("$2")
+
+
+def _migrate_to_bcrypt(db: Client, username: str, plain: str) -> None:
+    """Substitui o hash SHA-256 por bcrypt no banco — executado após login bem-sucedido."""
+    try:
+        new_hash = hash_password(plain)
+        db.table("users").update({"password": new_hash}).eq("username", username).execute()
+    except Exception as e:
+        print(f"[db] Falha ao migrar senha de '{username}': {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# INIT DB
+# ══════════════════════════════════════════════════════════════════════════════
 
 def init_db():
     db = get_client()
@@ -66,10 +120,13 @@ def _ensure_default_users(db: Client):
         },
     ]
     for u in defaults:
+        # ignore_duplicates=True: não sobrescreve se já existir
         db.table("users").upsert(u, on_conflict="username", ignore_duplicates=True).execute()
 
 
-# ── Usuários ──────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# USUÁRIOS
+# ══════════════════════════════════════════════════════════════════════════════
 
 def load_students() -> dict:
     db   = get_client()
@@ -90,35 +147,68 @@ def load_students() -> dict:
 
 
 def authenticate(username: str, password: str) -> dict | None:
+    """
+    Autentica o usuário.
+    - Tenta username exato; se não achar, tenta lowercase.
+    - Aceita hash bcrypt ou SHA-256 legado.
+    - Se SHA-256, migra automaticamente para bcrypt após login bem-sucedido.
+    """
+    db       = get_client()
     students = load_students()
+
+    # Resolve username (exato ou lowercase)
     resolved = username
     u = students.get(username)
     if u is None:
         resolved = username.lower()
         u = students.get(resolved)
-    if u and u["password"] == hash_password(password):
-        return {**u, "_resolved_username": resolved}
-    return None
+
+    if u is None:
+        return None
+
+    stored = u["password"]
+    if not _verify_password(password, stored):
+        return None
+
+    # Migração automática de SHA-256 → bcrypt
+    if _needs_migration(stored):
+        _migrate_to_bcrypt(db, resolved, password)
+
+    return {**u, "_resolved_username": resolved}
 
 
-def register_student(username, name, password, email="",
-                     level="Beginner", focus="General Conversation"):
+def register_student(
+    username: str,
+    name: str,
+    password: str,
+    email: str = "",
+    level: str = "Beginner",
+    focus: str = "General Conversation",
+) -> tuple[bool, str]:
     db = get_client()
-    existing = db.table("users").select("username").eq("username", username).execute().data
+    existing = (
+        db.table("users").select("username").eq("username", username).execute().data
+    )
     if existing:
         return False, "Username já existe."
 
-    now = datetime.now().isoformat()
+    now     = datetime.now().isoformat()
     profile = {
-        "theme": "dark", "accent_color": "#f0a500", "language": "pt-BR",
-        "nickname": "", "occupation": "",
-        "ai_style": "Warm & Encouraging", "ai_tone": "Teacher",
-        "custom_instructions": "", "voice_lang": "en", "speech_lang": "en-US",
+        "theme":               "dark",
+        "accent_color":        "#f0a500",
+        "language":            "pt-BR",
+        "nickname":            "",
+        "occupation":          "",
+        "ai_style":            "Warm & Encouraging",
+        "ai_tone":             "Teacher",
+        "custom_instructions": "",
+        "voice_lang":          "en",
+        "speech_lang":         "en-US",
     }
     db.table("users").insert({
         "username":   username,
         "name":       name,
-        "password":   hash_password(password),
+        "password":   hash_password(password),   # ← bcrypt desde o início
         "role":       "student",
         "email":      email,
         "level":      level,
@@ -153,11 +243,15 @@ def update_profile(username: str, patch: dict) -> bool:
 
 def update_password(username: str, new_pw: str) -> bool:
     db = get_client()
-    db.table("users").update({"password": hash_password(new_pw)}).eq("username", username).execute()
+    db.table("users").update(
+        {"password": hash_password(new_pw)}
+    ).eq("username", username).execute()
     return True
 
 
-# ── Sessões persistentes ──────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SESSÕES PERSISTENTES
+# ══════════════════════════════════════════════════════════════════════════════
 
 def create_session(username: str) -> str:
     token = secrets.token_urlsafe(32)
@@ -177,16 +271,24 @@ def validate_session(token: str) -> dict | None:
         return None
     db = get_client()
     try:
-        result = db.rpc("validate_session", {"p_token": token}).execute()
+        result   = db.rpc("validate_session", {"p_token": token}).execute()
         username = result.data
         if not username:
             return None
     except Exception:
-        row = db.table("sessions").select("username").eq("token", token).execute().data
+        row = (
+            db.table("sessions")
+            .select("username")
+            .eq("token", token)
+            .execute()
+            .data
+        )
         if not row:
             return None
         username = row[0]["username"]
-        db.table("sessions").update({"last_seen": datetime.now().isoformat()}).eq("token", token).execute()
+        db.table("sessions").update(
+            {"last_seen": datetime.now().isoformat()}
+        ).eq("token", token).execute()
 
     return load_students().get(username)
 
@@ -196,7 +298,9 @@ def delete_session(token: str):
     db.table("sessions").delete().eq("token", token).execute()
 
 
-# ── Conversas ─────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# CONVERSAS
+# ══════════════════════════════════════════════════════════════════════════════
 
 def new_conversation(username: str) -> str:
     cid = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -223,11 +327,7 @@ def delete_conversation(username: str, conv_id: str):
 
 
 def list_conversations(username: str) -> list:
-    """
-    Retorna lista de conversas.
-    Chaves padronizadas: id, title, date, msg_count  ← BUG CORRIGIDO
-    (antes retornava 'count', mas show_history lia 'msg_count')
-    """
+    """Chaves padronizadas: id, title, date, msg_count"""
     db = get_client()
     try:
         rows = db.rpc("list_conversations", {"p_username": username}).execute().data or []
@@ -249,7 +349,7 @@ def list_conversations(username: str) -> list:
             "id":        r["id"],
             "title":     title,
             "date":      date,
-            "msg_count": r.get("msg_count", 0),   # ← padronizado
+            "msg_count": r.get("msg_count", 0),
         })
     return result
 
@@ -297,7 +397,7 @@ def _list_conversations_fallback(username: str, db: Client) -> list:
             "id":        c["id"],
             "title":     title,
             "date":      date,
-            "msg_count": count,   # ← padronizado
+            "msg_count": count,
         })
     return result
 
@@ -327,22 +427,29 @@ def load_conversation(username: str, conv_id: str) -> list:
     return rows
 
 
-def append_message(username, conv_id, role, content,
-                   audio=False, tts_b64=None, is_file=False):
+def append_message(
+    username:  str,
+    conv_id:   str,
+    role:      str,
+    content:   str,
+    audio:     bool = False,
+    tts_b64:   str  = None,
+    is_file:   bool = False,
+):
     now = datetime.now()
     db  = get_client()
     try:
         db.rpc("append_message", {
-            "p_username":       username,
-            "p_conv_id":        conv_id,
-            "p_role":           role,
-            "p_content":        content,
-            "p_audio":          bool(audio),
-            "p_is_file":        bool(is_file),
-            "p_tts_b64":        tts_b64 or "",
-            "p_msg_time":       now.strftime("%H:%M"),
-            "p_msg_date":       now.strftime("%Y-%m-%d"),
-            "p_msg_timestamp":  now.isoformat(),
+            "p_username":      username,
+            "p_conv_id":       conv_id,
+            "p_role":          role,
+            "p_content":       content,
+            "p_audio":         bool(audio),
+            "p_is_file":       bool(is_file),
+            "p_tts_b64":       tts_b64 or "",
+            "p_msg_time":      now.strftime("%H:%M"),
+            "p_msg_date":      now.strftime("%Y-%m-%d"),
+            "p_msg_timestamp": now.isoformat(),
         }).execute()
     except Exception:
         db.table("conversations").upsert(
@@ -364,7 +471,9 @@ def append_message(username, conv_id, role, content,
         }).execute()
 
 
-# ── Avatar do usuário (Supabase Storage) ──────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# AVATAR DO USUÁRIO (Supabase Storage)
+# ══════════════════════════════════════════════════════════════════════════════
 
 AVATAR_BUCKET = "avatars"
 
@@ -400,10 +509,7 @@ def save_user_avatar_db(username: str, raw: bytes, mime: str) -> bool:
 
 
 def get_user_avatar_db(username: str) -> tuple[bytes, str] | None:
-    """
-    BUG CORRIGIDO: a variável 'path' não era construída antes do download.
-    Agora busca a versão no profile e constrói o path correto.
-    """
+    """BUG CORRIGIDO: 'path' agora é construído antes do download."""
     db = get_client()
     try:
         row     = db.table("users").select("profile").eq("username", username).execute().data
@@ -412,7 +518,7 @@ def get_user_avatar_db(username: str) -> tuple[bytes, str] | None:
         if not version:
             return None
 
-        path = f"{username}/avatar_{version}"   # ← BUG CORRIGIDO
+        path = f"{username}/avatar_{version}"
         raw  = db.storage.from_(AVATAR_BUCKET).download(path)
         if not raw:
             return None
@@ -448,27 +554,26 @@ def remove_user_avatar_db(username: str) -> bool:
         return False
 
 
-# ── Stats do professor ─────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# STATS DO PROFESSOR
+# ══════════════════════════════════════════════════════════════════════════════
 
 def get_all_students_stats() -> list:
-    """
-    BUG CORRIGIDO: chave retornada era 'messages', mas show_dashboard lia 'total_messages'.
-    Agora padronizado como 'total_messages' em ambos os lugares.
-    """
+    """Chave padronizada: total_messages (era 'messages' antes — BUG CORRIGIDO)."""
     db = get_client()
     try:
         rows = db.rpc("get_students_stats").execute().data or []
         return [
             {
-                "username":           r["username"],
-                "name":               r["name"],
-                "level":              r["level"],
-                "focus":              r["focus"],
-                "total_messages":     r.get("total_msgs", 0),    # ← padronizado
-                "total_conversations": r.get("total_convs", 0),  # ← padronizado
-                "corrections":        r.get("corrections", 0),
-                "last_activity":      r.get("last_active", "---"),
-                "created_at":         (r.get("created_at") or "")[:10],
+                "username":            r["username"],
+                "name":                r["name"],
+                "level":               r["level"],
+                "focus":               r["focus"],
+                "total_messages":      r.get("total_msgs",  0),
+                "total_conversations": r.get("total_convs", 0),
+                "corrections":         r.get("corrections", 0),
+                "last_activity":       r.get("last_active", "---"),
+                "created_at":          (r.get("created_at") or "")[:10],
             }
             for r in rows
         ]
@@ -526,8 +631,8 @@ def _get_students_stats_fallback(db: Client) -> list:
             "name":                data["name"],
             "level":               data["level"],
             "focus":               data["focus"],
-            "total_messages":      total,        # ← padronizado
-            "total_conversations": total_convs,  # ← padronizado
+            "total_messages":      total,
+            "total_conversations": total_convs,
             "corrections":         fixes,
             "last_activity":       last,
             "created_at":          data["created_at"][:10],
