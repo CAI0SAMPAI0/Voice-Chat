@@ -678,18 +678,11 @@ function stopTTS(){{
     _analyser = null;
     updateGlobalBtn(false); enterIdle();
 }}
-function updateGlobalBtn(playing){{
-    var btn=document.getElementById('global-play-btn');
-    if(!btn) return;
-    btn.textContent = playing ? T_STOP : T_PLAY;
-    btn.style.background = playing ? '#8b2a2a' : '#1a2535';
-}}
+function updateGlobalBtn(playing){{ /* global btn removido */ }}
 
 // ── Controles ──
 document.getElementById('global-play-btn').addEventListener('click',function(){{
-    if(currentAudio&&!currentAudio.paused) stopTTS();
-    else if(lastB64||TTS_B64) playTTS(lastB64||TTS_B64);
-}});
+/* global-play-btn removido */
 document.getElementById('vol-slider').addEventListener('input',function(){{
     document.getElementById('vol-val').textContent=Math.round(this.value*100)+'%';
     if(currentAudio) currentAudio.volume=parseFloat(this.value);
