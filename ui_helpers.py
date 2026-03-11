@@ -208,8 +208,14 @@ _STRINGS = {
     },
 }
 
-def t(key: str, lang: str = "pt-BR") -> str:
-    return _STRINGS.get(lang, _STRINGS["pt-BR"]).get(key, key)
+def t(key: str, lang: str = "pt-BR", default: str = None) -> str:
+    val = _STRINGS.get(lang, _STRINGS["pt-BR"]).get(key)
+    if val is not None:
+        return val
+    val = _STRINGS["pt-BR"].get(key)
+    if val is not None:
+        return val
+    return default if default is not None else key
 
 
 # =============================================================================
