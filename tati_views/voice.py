@@ -60,20 +60,6 @@ TEACHING STYLE:
 - NEVER start uninvited. Wait for the student to speak first.
 - NEVER use EMOTES"""
 
-# formatação
-def _md_to_html(text: str) -> str:
-    import re
-    # Negrito: **texto** → <strong>
-    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
-    # Itálico: *texto* ou _texto_ → <em>
-    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
-    text = re.sub(r'_(.+?)_', r'<em>\1</em>', text)
-    # Sublinhado: __texto__ → <u>
-    text = re.sub(r'__(.+?)__', r'<u>\1</u>', text)
-    # Quebra de linha
-    text = text.replace("\n", "<br>")
-    return text
-
 # PROCESSAR ÁUDIO → CLAUDE → TTS
 
 def process_voice(raw: bytes, conv_id: str) -> None:
