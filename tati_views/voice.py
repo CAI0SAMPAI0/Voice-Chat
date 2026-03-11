@@ -465,6 +465,7 @@ input[type=range].ctrl-range::-moz-range-thumb{{
 
     <div class="mic-footer">
         <div class="audio-controls" id="audioControls">
+            <button id="global-play-btn">&#9654; Ouvir</button>
             <span class="ctrl-label">Vol</span>
             <input type="range" class="ctrl-range" id="vol-slider" min="0" max="1" step="0.05" value="1">
             <span class="ctrl-val" id="vol-val">100%</span>
@@ -678,11 +679,18 @@ function stopTTS(){{
     _analyser = null;
     updateGlobalBtn(false); enterIdle();
 }}
-function updateGlobalBtn(playing){{ /* global btn removido */ }}
+function updateGlobalBtn(playing){{
+    var btn=document.getElementById('global-play-btn');
+    if(!btn) return;
+    btn.textContent = playing ? T_STOP : T_PLAY;
+    btn.style.background = playing ? '#8b2a2a' : '#1a2535';
+}}
 
 // ── Controles ──
 document.getElementById('global-play-btn').addEventListener('click',function(){{
-/* global-play-btn removido */
+    if(currentAudio&&!currentAudio.paused) stopTTS();
+    else if(lastB64||TTS_B64) playTTS(lastB64||TTS_B64);
+}});
 document.getElementById('vol-slider').addEventListener('input',function(){{
     document.getElementById('vol-val').textContent=Math.round(this.value*100)+'%';
     if(currentAudio) currentAudio.volume=parseFloat(this.value);
