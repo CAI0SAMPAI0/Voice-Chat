@@ -184,8 +184,8 @@ html,body{overflow:hidden!important;}
         st.session_state["_vm_last_upload"] = audio_val
         for k in ["_vm_reply", "_vm_tts_b64", "_vm_user_said", "_vm_error"]:
             st.session_state.pop(k, None)
-        
-        process_voice(audio_val.read(), conv_id)
+        with st.spinner(t("processing", lang)):
+            process_voice(audio_val.read(), conv_id)
         st.session_state.audio_key += 1
         st.rerun()
 
@@ -208,14 +208,6 @@ html,body{overflow:hidden!important;}
     tap_stop    = json.dumps(t("tap_to_stop",  lang))
     speaking_   = json.dumps(t("speaking_ai",  lang))
     proc_       = json.dumps(t("processing",   lang))
-
-    # NOVAS TRADUÇÕES PARA A INTERFACE JS
-    t_online_js = json.dumps(f"● {t('online', lang, 'Online')}")
-    t_listen_js = json.dumps(f"🎙 {t('listening', lang, 'Ouvindo')}…")
-    t_proc_js   = json.dumps(f"⏳ {t('processing', lang, 'Processando')}…")
-    t_play_js   = json.dumps(f"▶ {t('listen', lang, 'Ouvir')}")
-    t_stop_js   = json.dumps(f"⏹ {t('pause', lang, 'Parar')}")
-    t_you_js    = json.dumps(t("you", lang, 'Você'))
 
     av_normal_js     = json.dumps(frames.get("normal",     ""))
     av_meio_js       = json.dumps(frames.get("meio",       ""))
@@ -494,14 +486,6 @@ var GOOD_PRONUNC = {good_pronunc_js};
 var PHOTO        = {photo_js};
 var PROF_NAME    = {prof_name_js};
 
-// NOVAS VARIÁVEIS DE TRADUÇÃO
-var T_ONLINE = {t_online_js};
-var T_LISTENING = {t_listen_js};
-var T_PROC = {t_proc_js};
-var T_PLAY = {t_play_js};
-var T_STOP = {t_stop_js};
-var T_YOU = {t_you_js};
-
 // 7 frames
 var F_NORMAL     = {av_normal_js};
 var F_MEIO       = {av_meio_js};
@@ -559,7 +543,7 @@ function enterIdle(){{
     _state = 'idle';
     setFrame(F_NORMAL);
     ring.classList.remove('active');
-    statusTxt.textContent = T_ONLINE;
+    statusTxt.textContent = '● Online';
     if(!HAS_ANIM) return;
     function scheduleBlink(){{
         var delay = 3210 + Math.random() * 2000;
@@ -582,7 +566,7 @@ function enterListening(){{
     _state = 'listening';
     setFrame(HAS_ANIM ? F_OUVINDO : PHOTO);
     ring.classList.remove('active');
-    statusTxt.textContent = T_LISTENING;
+    statusTxt.textContent = '🎙 Ouvindo…';
 }}
 
 // ── PROCESSING: normal com piscada lenta enquanto Claude pensa ──
@@ -591,7 +575,7 @@ function enterProcessing(){{
     _state = 'processing';
     setFrame(HAS_ANIM ? F_NORMAL : PHOTO);
     ring.classList.remove('active');
-    statusTxt.textContent = T_PROC;
+    statusTxt.textContent = '⏳ Processando…';
     if(!HAS_ANIM) return;
     _blinkTimer = setInterval(function(){{
         if(_state !== 'processing') return;
@@ -682,7 +666,7 @@ function stopTTS(){{
 function updateGlobalBtn(playing){{
     var btn=document.getElementById('global-play-btn');
     if(!btn) return;
-    btn.textContent = playing ? T_STOP : T_PLAY;
+    btn.textContent = playing ? '⏹ Parar' : '▶ Ouvir';
     btn.style.background = playing ? '#8b2a2a' : '#1a2535';
 }}
 
@@ -704,7 +688,7 @@ document.getElementById('spd-slider').addEventListener('input',function(){{
 function addBubble(role, text, b64){{
     var label=document.createElement('div');
     label.className='bubble-label'+(role==='user'?' right':'');
-    label.textContent=role==='user'? T_YOU :PROF_NAME;
+    label.textContent=role==='user'?'Você':PROF_NAME;
 
     var bub=document.createElement('div');
     bub.className='bubble '+role;
@@ -716,7 +700,7 @@ function addBubble(role, text, b64){{
     // Botão ▶ apenas para mensagens do bot COM áudio salvo
     if(role==='bot'&&b64){{
         var pbtn=document.createElement('button');
-        pbtn.className=T_PLAY;
+        pbtn.className='bubble-play-btn';
         pbtn.textContent='▶ Ouvir';
         pbtn.addEventListener('click',function(){{
             var isPlaying=currentAudio&&!currentAudio.paused&&currentAudio._srcB64===b64;
@@ -727,9 +711,9 @@ function addBubble(role, text, b64){{
                 document.querySelectorAll('.bubble-play-btn').forEach(function(b){{
                     b.textContent='▶ Ouvir'; b.classList.remove('playing');
                 }});
-                pbtn.textContent=T_STOP; pbtn.classList.add('playing');
+                pbtn.textContent='⏹ Parar'; pbtn.classList.add('playing');
                 playTTS(b64, function(){{
-                    pbtn.textContent=T_PLAY; pbtn.classList.remove('playing');
+                    pbtn.textContent='▶ Ouvir'; pbtn.classList.remove('playing');
                 }});
             }}
         }});
@@ -739,22 +723,18 @@ function addBubble(role, text, b64){{
 }}
 
 // ── Renderiza estado atual ──
-if(HISTORY && HISTORY.length > 0) {{
-    HISTORY.forEach(function(msg){{
-        var role = msg.role === 'user' ? 'user' : 'bot';
-        addBubble(role, msg.content, msg.tts_b64 || '');
-    }});
-}}
-
-// 2. Controla a caixa de erro e a inicialização de áudio
 if(VM_ERROR){{
-    errBox.textContent = VM_ERROR; 
-    errBox.style.display = 'block'; 
-    enterIdle();
+    errBox.textContent=VM_ERROR; errBox.style.display='block'; enterIdle();
 }}else{{
-    errBox.style.display = 'none';
+    errBox.style.display='none';
+    if(HISTORY&&HISTORY.length>0){{
+        HISTORY.forEach(function(msg){{
+            var role=msg.role==='user'?'user':'bot';
+            addBubble(role, msg.content, msg.tts_b64||'');
+        }});
+    }}
     // Autoplay da resposta mais recente
-    if(TTS_B64) setTimeout(function(){{ playTTS(TTS_B64); }}, 300);
+    if(TTS_B64) setTimeout(function(){{ playTTS(TTS_B64); }},300);
     else        enterIdle();
 }}
 
