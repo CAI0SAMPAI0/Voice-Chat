@@ -243,30 +243,22 @@ def get_avatar_frames() -> dict:
                 return f"data:image/png;base64,{base64.b64encode(p.read_bytes()).decode()}"
         return ""
     return {
-        # ── Animação de boca (usados durante a fala) ──────────────────────
-        "base":     _load([_base/"assets"/"avatar_tati_normal.png",
-                           "assets/avatar_tati_normal.png"]),
-
-        "closed":   _load([_base/"assets"/"avatar_tati_closed.png",
-                           "assets/avatar_tati_closed.png"]),
-
-        "mid":      _load([_base/"assets"/"avatar_tati_meio.png",
-                           "assets/avatar_tati_meio.png"]),         # boca levemente aberta
-
-        "open":     _load([_base/"assets"/"avatar_tati_bem_aberta.png",
-                           "assets/avatar_tati_bem_aberta.png",
-                           _base/"assets"/"avatar_tati_aberta.png",
-                           "assets/avatar_tati_aberta.png"]),        # boca bem aberta
-
-        # ── Expressões extras (usadas em eventos específicos) ─────────────
-        "smile":    _load([_base/"assets"/"avatar_tati_aberta.png",
-                           "assets/avatar_tati_aberta.png"]),        # sorrindo
-
-        "wink":     _load([_base/"assets"/"tati_piscando.png",
-                           "assets/tati_piscando.png"]),             # olhos fechados / piscando
-
-        "surprise": _load([_base/"assets"/"tati_surpresa.png",
-                           "assets/tati_surpresa.png"]),             # surpresa / animada
+        # ── Fala da IA (sincronização labial) ────────────────────────────────
+        "normal":     _load([_base/"assets"/"avatar_tati_normal.png",
+                             "assets/avatar_tati_normal.png"]),
+        "meio":       _load([_base/"assets"/"avatar_tati_meio.png",
+                             "assets/avatar_tati_meio.png"]),       # boca levemente aberta
+        "aberta":     _load([_base/"assets"/"avatar_tati_aberta.png",
+                             "assets/avatar_tati_aberta.png"]),     # boca aberta
+        "bem_aberta": _load([_base/"assets"/"avatar_tati_bem_aberta.png",
+                             "assets/avatar_tati_bem_aberta.png"]), # boca bem aberta / reação
+        # ── Estados especiais ─────────────────────────────────────────────────
+        "ouvindo":    _load([_base/"assets"/"avatar_tati_ouvindo.png",
+                             "assets/avatar_tati_ouvindo.png"]),    # enquanto escuta o aluno
+        "piscando":   _load([_base/"assets"/"tati_piscando.png",
+                             "assets/tati_piscando.png"]),          # piscar natural idle
+        "surpresa":   _load([_base/"assets"/"tati_surpresa.png",
+                             "assets/tati_surpresa.png"]),          # expressão animada
     }
 
 

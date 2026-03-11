@@ -4,6 +4,7 @@ Melhorias:
   - Histórico renderiza botão ▶ por bolha (com tts_b64 salvo no banco)
   - Menos reruns: só rerun após processar áudio
   - Avatar animado isolado
+  - Animação do avatar ao re-ouvir qualquer bolha de áudio
 """
 
 import base64
@@ -63,14 +64,10 @@ TEACHING STYLE:
 # formatação
 def _md_to_html(text: str) -> str:
     import re
-    # Negrito: **texto** → <strong>
     text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
-    # Itálico: *texto* ou _texto_ → <em>
     text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
     text = re.sub(r'_(.+?)_', r'<em>\1</em>', text)
-    # Sublinhado: __texto__ → <u>
     text = re.sub(r'__(.+?)__', r'<u>\1</u>', text)
-    # Quebra de linha
     text = text.replace("\n", "<br>")
     return text
 
@@ -189,9 +186,9 @@ html,body{overflow:hidden!important;}
     vm_error = st.session_state.get("_vm_error",  "")
     history  = st.session_state.get("_vm_history", [])
 
-    # Frames do avatar
+    # Frames do avatar — chaves: normal, meio, aberta, bem_aberta, ouvindo, piscando, surpresa
     frames    = get_avatar_frames()
-    has_anim  = bool(frames["normal"])
+    has_anim  = bool(frames.get("normal"))
 
     # Serializa dados para JS
     history_js  = json.dumps(history)
@@ -203,13 +200,13 @@ html,body{overflow:hidden!important;}
     speaking_   = json.dumps(t("speaking_ai",  lang))
     proc_       = json.dumps(t("processing",   lang))
 
-    av_normal_js     = json.dumps(frames["normal"])
-    av_meio_js       = json.dumps(frames["meio"])
-    av_aberta_js     = json.dumps(frames["aberta"])
-    av_bem_aberta_js = json.dumps(frames["bem_aberta"])
-    av_ouvindo_js    = json.dumps(frames["ouvindo"])
-    av_piscando_js   = json.dumps(frames["piscando"])
-    av_surpresa_js   = json.dumps(frames["surpresa"])
+    av_normal_js     = json.dumps(frames.get("normal",     ""))
+    av_meio_js       = json.dumps(frames.get("meio",       ""))
+    av_aberta_js     = json.dumps(frames.get("aberta",     ""))
+    av_bem_aberta_js = json.dumps(frames.get("bem_aberta", ""))
+    av_ouvindo_js    = json.dumps(frames.get("ouvindo",    ""))
+    av_piscando_js   = json.dumps(frames.get("piscando",   ""))
+    av_surpresa_js   = json.dumps(frames.get("surpresa",   ""))
     has_anim_js      = "true" if has_anim else "false"
     photo_js         = json.dumps(get_tati_mini_b64() or get_photo_b64())
     prof_name_js     = json.dumps(PROF_NAME)
@@ -317,7 +314,6 @@ html,body{{
     background:transparent;border:1px solid #1a2535;color:#3a6a8a;
     font-size:.72rem;padding:4px 12px;border-radius:8px;
     cursor:pointer;font-family:inherit;transition:all .15s;margin-bottom:4px;
-    /* touch-friendly */
     min-height:32px;
 }}
 .bubble-play-btn:hover{{color:#f0a500;border-color:rgba(240,165,0,.4);background:rgba(240,165,0,.06);}}
@@ -351,17 +347,16 @@ html,body{{
     border:1px solid #1a2535;
     border-radius:12px;
     width:100%;
-    overflow-x:auto;          /* scroll horizontal se necessário */
+    overflow-x:auto;
     overflow-y:hidden;
     -webkit-overflow-scrolling:touch;
     white-space:nowrap;
-    scrollbar-width:none;     /* esconde scrollbar */
-    flex-wrap:nowrap;         /* NUNCA quebra linha */
+    scrollbar-width:none;
+    flex-wrap:nowrap;
     min-height:44px;
 }}
 .audio-controls::-webkit-scrollbar{{display:none;}}
 
-/* Em telas muito pequenas, reduz padding e fonte */
 @media(max-width:400px){{
     .audio-controls{{padding:6px 10px;gap:4px;}}
     .ctrl-label{{font-size:.6rem;}}
@@ -378,13 +373,13 @@ input[type=range].ctrl-range{{
     width:60px;
     height:4px;
     background:#1a2535;border-radius:2px;outline:none;cursor:pointer;
-    touch-action:none;   /* evita scroll ao arrastar no mobile */
+    touch-action:none;
 }}
 @media(min-width:480px){{
     input[type=range].ctrl-range{{ width:80px; }}
 }}
 input[type=range].ctrl-range::-webkit-slider-thumb{{
-    -webkit-appearance:none;width:16px;height:16px;  /* maior para touch */
+    -webkit-appearance:none;width:16px;height:16px;
     border-radius:50%;background:{ring_color};cursor:pointer;
 }}
 input[type=range].ctrl-range::-moz-range-thumb{{
@@ -396,7 +391,7 @@ input[type=range].ctrl-range::-moz-range-thumb{{
     border-radius:8px;padding:5px 12px;font-size:.78rem;cursor:pointer;
     white-space:nowrap;transition:background .15s;font-family:inherit;
     flex-shrink:0;
-    min-height:32px;        /* touch-friendly */
+    min-height:32px;
     touch-action:manipulation;
 }}
 #global-play-btn:hover{{background:#252d3d;}}
@@ -409,11 +404,10 @@ input[type=range].ctrl-range::-moz-range-thumb{{
     display:flex;align-items:center;justify-content:center;
     box-shadow:0 4px 20px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05);
     transition:all .2s;outline:none;
-    touch-action:manipulation;   /* remove delay 300ms no mobile */
+    touch-action:manipulation;
     -webkit-tap-highlight-color:transparent;
     flex-shrink:0;
 }}
-/* Mic maior em tablets */
 @media(min-width:600px){{
     .mic-btn{{width:80px;height:80px;font-size:32px;}}
 }}
@@ -482,7 +476,7 @@ var GOOD_PRONUNC = {good_pronunc_js};
 var PHOTO        = {photo_js};
 var PROF_NAME    = {prof_name_js};
 
-// 7 frames
+// 7 frames de animação
 var F_NORMAL     = {av_normal_js};
 var F_MEIO       = {av_meio_js};
 var F_ABERTA     = {av_aberta_js};
@@ -518,7 +512,13 @@ function setFrame(src){{
     avImg.style.display   = 'block';
     avEmoji.style.display = 'none';
 }}
-setFrame(HAS_ANIM ? F_NORMAL : (PHOTO || F_NORMAL));
+// Usa foto estática como fallback quando não há animação
+setFrame(HAS_ANIM ? F_NORMAL : (PHOTO || ''));
+if(!HAS_ANIM && PHOTO){{
+    avImg.src = PHOTO;
+    avImg.style.display = 'block';
+    avEmoji.style.display = 'none';
+}}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MÁQUINA DE ESTADOS:  idle | listening | processing | speaking
@@ -539,9 +539,10 @@ function _stopAllTimers(){{
 function enterIdle(){{
     _stopAllTimers();
     _state = 'idle';
-    setFrame(F_NORMAL);
+    if(HAS_ANIM) setFrame(F_NORMAL); else if(PHOTO) {{ avImg.src=PHOTO; avImg.style.display='block'; avEmoji.style.display='none'; }}
     ring.classList.remove('active');
     statusTxt.textContent = '● Online';
+    if(!HAS_ANIM) return;
     function scheduleBlink(){{
         var delay = 3210 + Math.random() * 2000;
         _blinkTimer = setTimeout(function(){{
@@ -561,7 +562,7 @@ function enterIdle(){{
 function enterListening(){{
     _stopAllTimers();
     _state = 'listening';
-    setFrame(F_OUVINDO);
+    if(HAS_ANIM) setFrame(F_OUVINDO); else if(PHOTO) {{ avImg.src=PHOTO; avImg.style.display='block'; }}
     ring.classList.remove('active');
     statusTxt.textContent = '🎙 Ouvindo…';
 }}
@@ -570,9 +571,10 @@ function enterListening(){{
 function enterProcessing(){{
     _stopAllTimers();
     _state = 'processing';
-    setFrame(F_NORMAL);
+    if(HAS_ANIM) setFrame(F_NORMAL);
     ring.classList.remove('active');
     statusTxt.textContent = '⏳ Processando…';
+    if(!HAS_ANIM) return;
     _blinkTimer = setInterval(function(){{
         if(_state !== 'processing') return;
         setFrame(F_PISCANDO);
@@ -584,7 +586,6 @@ function enterProcessing(){{
 }}
 
 // ── SPEAKING: sincronização labial via Web Audio API ─────────────────────────
-// normal = boca fechada (pausas) | meio = boca aberta (fala)
 function enterSpeaking(audioEl){{
     _stopAllTimers();
     _state = 'speaking';
@@ -600,7 +601,7 @@ function enterSpeaking(audioEl){{
         if(!_analyser){{
             _analyser = _audioCtx.createAnalyser();
             _analyser.fftSize = 1024;
-            _analyser.smoothingTimeConstant = 0.1; // reage rápido ao volume real
+            _analyser.smoothingTimeConstant = 0.1;
             var src = _audioCtx.createMediaElementSource(audioEl);
             src.connect(_analyser);
             _analyser.connect(_audioCtx.destination);
@@ -610,12 +611,11 @@ function enterSpeaking(audioEl){{
         _mouthTimer = setInterval(function(){{
             if(_state !== 'speaking') return;
             _analyser.getByteFrequencyData(buf);
-            // média simples dos bins de fala
             var sum = 0, n = Math.min(100, buf.length);
             for(var i = 4; i < n; i++) sum += buf[i];
-            var avg = sum / (n - 4); // 0..255
+            var avg = sum / (n - 4);
             setFrame(avg < 18 ? F_NORMAL : F_MEIO);
-        }}, 60); // ~16fps — rápido o suficiente para parecer natural
+        }}, 60);
 
     }}catch(e){{
         // Fallback sem Web Audio: alterna meio↔normal a ~2Hz
@@ -632,7 +632,6 @@ function enterSpeaking(audioEl){{
 function onSpeakingEnded(goodPronunc){{
     _stopAllTimers();
     if(goodPronunc && F_BEM_ABERTA){{
-        // Pronúncia excelente: reação de aprovação por 1.2s
         setFrame(F_BEM_ABERTA);
         setTimeout(function(){{ enterIdle(); }}, 1200);
     }} else {{
@@ -640,61 +639,135 @@ function onSpeakingEnded(goodPronunc){{
     }}
 }}
 
-// ── Áudio global ──
-var currentAudio=null, lastB64=null;
+// ══════════════════════════════════════════════════════════════════════════════
+// CONTROLE DE ÁUDIO GLOBAL
+// ══════════════════════════════════════════════════════════════════════════════
+var currentAudio = null;
+var lastB64      = null;
+// Guarda a referência do botão de bolha que está tocando
+var _activeBubbleBtn = null;
+
 function getVol(){{ return parseFloat(document.getElementById('vol-slider').value)||1; }}
 function getSpd(){{ return parseFloat(document.getElementById('spd-slider').value)||1; }}
 
-function playTTS(b64, onEndCallback){{
-    if(currentAudio){{ currentAudio.pause(); currentAudio=null; stopMouthAnim(); }}
+/**
+ * playTTS — toca áudio b64 e anima o avatar.
+ * @param {{string}} b64           Base64 do MP3
+ * @param {{Function|null}} onEnd  Callback ao terminar
+ * @param {{boolean}} goodPronunc  Se true, faz reação de aprovação ao fim
+ */
+function playTTS(b64, onEnd, goodPronunc){{
+    // Para áudio anterior
+    if(currentAudio){{
+        currentAudio.pause();
+        currentAudio = null;
+        _stopAllTimers();
+    }}
     if(!b64) return;
     lastB64 = b64;
-    ring.classList.add('active');
-    statusTxt.textContent=SPEAKING;
-    var audio=new Audio('data:audio/mp3;base64,'+b64);
-    audio.volume=getVol(); audio.playbackRate=getSpd(); audio._srcB64=b64;
-    currentAudio=audio;
-    audio.onplay=function(){{ startMouthAnim(audio); updateGlobalBtn(true); }};
-    audio.onended=function(){{
-        stopMouthAnim(); ring.classList.remove('active');
-        statusTxt.textContent='Online'; currentAudio=null;
-        updateGlobalBtn(false);
-        if(onEndCallback) onEndCallback();
+
+    var audio = new Audio('data:audio/mp3;base64,'+b64);
+    audio.volume      = getVol();
+    audio.playbackRate = getSpd();
+    audio._srcB64     = b64;
+    currentAudio      = audio;
+
+    // Inicia animação de fala
+    audio.onplay = function(){{
+        enterSpeaking(audio);
+        updateGlobalBtn(true);
     }};
-    audio.onerror=function(){{ stopMouthAnim(); ring.classList.remove('active'); updateGlobalBtn(false); }};
-    audio.play().catch(function(){{ stopMouthAnim(); ring.classList.remove('active'); updateGlobalBtn(false); }});
+
+    audio.onended = function(){{
+        _stopAllTimers();
+        ring.classList.remove('active');
+        currentAudio = null;
+        updateGlobalBtn(false);
+        // Reseta botão de bolha ativo
+        if(_activeBubbleBtn){{
+            _activeBubbleBtn.textContent = '▶ Ouvir';
+            _activeBubbleBtn.classList.remove('playing');
+            _activeBubbleBtn = null;
+        }}
+        onSpeakingEnded(!!goodPronunc);
+        if(onEnd) onEnd();
+    }};
+
+    audio.onerror = function(){{
+        _stopAllTimers();
+        ring.classList.remove('active');
+        currentAudio = null;
+        updateGlobalBtn(false);
+        if(_activeBubbleBtn){{
+            _activeBubbleBtn.textContent = '▶ Ouvir';
+            _activeBubbleBtn.classList.remove('playing');
+            _activeBubbleBtn = null;
+        }}
+        enterIdle();
+    }};
+
+    audio.play().catch(function(){{
+        _stopAllTimers();
+        ring.classList.remove('active');
+        currentAudio = null;
+        updateGlobalBtn(false);
+        enterIdle();
+    }});
 }}
+
 function stopTTS(){{
-    if(currentAudio){{ currentAudio.pause(); currentAudio=null; stopMouthAnim(); ring.classList.remove('active'); statusTxt.textContent='Online'; updateGlobalBtn(false); }}
+    if(currentAudio){{
+        currentAudio.pause();
+        currentAudio = null;
+        _stopAllTimers();
+        ring.classList.remove('active');
+        statusTxt.textContent = '● Online';
+        updateGlobalBtn(false);
+        if(_activeBubbleBtn){{
+            _activeBubbleBtn.textContent = '▶ Ouvir';
+            _activeBubbleBtn.classList.remove('playing');
+            _activeBubbleBtn = null;
+        }}
+        enterIdle();
+    }}
 }}
+
 function updateGlobalBtn(playing){{
-    var btn=document.getElementById('global-play-btn');
+    var btn = document.getElementById('global-play-btn');
     if(!btn) return;
     btn.textContent = playing ? '⏹ Parar' : '▶ Ouvir';
     btn.style.background = playing ? '#8b2a2a' : '#1a2535';
 }}
 
-// ── Controles ──
-document.getElementById('global-play-btn').addEventListener('click',function(){{
-    if(currentAudio&&!currentAudio.paused) stopTTS();
-    else if(lastB64||TTS_B64) playTTS(lastB64||TTS_B64);
-}});
-document.getElementById('vol-slider').addEventListener('input',function(){{
-    document.getElementById('vol-val').textContent=Math.round(this.value*100)+'%';
-    if(currentAudio) currentAudio.volume=parseFloat(this.value);
-}});
-document.getElementById('spd-slider').addEventListener('input',function(){{
-    document.getElementById('spd-val').textContent=parseFloat(this.value).toFixed(1)+'x';
-    if(currentAudio) currentAudio.playbackRate=parseFloat(this.value);
+// ── Botão global Ouvir / Parar ─────────────────────────────────────────────
+document.getElementById('global-play-btn').addEventListener('click', function(){{
+    if(currentAudio && !currentAudio.paused){{
+        stopTTS();
+    }} else if(lastB64 || TTS_B64){{
+        playTTS(lastB64 || TTS_B64, null, GOOD_PRONUNC);
+    }}
 }});
 
-// ── Renderiza bolhas com botão ▶ por bolha ──
+// ── Controles de volume e velocidade ──────────────────────────────────────────
+document.getElementById('vol-slider').addEventListener('input', function(){{
+    document.getElementById('vol-val').textContent = Math.round(this.value * 100) + '%';
+    if(currentAudio) currentAudio.volume = parseFloat(this.value);
+}});
+document.getElementById('spd-slider').addEventListener('input', function(){{
+    document.getElementById('spd-val').textContent = parseFloat(this.value).toFixed(1) + 'x';
+    if(currentAudio) currentAudio.playbackRate = parseFloat(this.value);
+}});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RENDERIZAÇÃO DAS BOLHAS
+// Botão ▶ por bolha → anima avatar ao tocar / parar
+// ══════════════════════════════════════════════════════════════════════════════
 function addBubble(role, text, b64){{
-    var label=document.createElement('div');
-    label.className='bubble-label'+(role==='user'?' right':'');
-    label.textContent=role==='user'?'Você':PROF_NAME;
+    var label = document.createElement('div');
+    label.className = 'bubble-label' + (role === 'user' ? ' right' : '');
+    label.textContent = role === 'user' ? 'Você' : PROF_NAME;
 
-    var bub=document.createElement('div');
+    var bub = document.createElement('div');
     bub.className = 'bubble ' + role;
     bub.innerHTML = text
         .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -708,107 +781,138 @@ function addBubble(role, text, b64){{
     histWrap.appendChild(bub);
 
     // Botão ▶ apenas para mensagens do bot COM áudio salvo
-    if(role==='bot'&&b64){{
-        var pbtn=document.createElement('button');
-        pbtn.className='bubble-play-btn';
-        pbtn.textContent='▶ Ouvir';
-        pbtn.addEventListener('click',function(){{
-            var isPlaying=currentAudio&&!currentAudio.paused&&currentAudio._srcB64===b64;
-            if(isPlaying){{
-                stopTTS(); pbtn.textContent='▶ Ouvir'; pbtn.classList.remove('playing');
-            }}else{{
-                // reseta todos os outros botões de bolha
-                document.querySelectorAll('.bubble-play-btn').forEach(function(b){{
-                    b.textContent='▶ Ouvir'; b.classList.remove('playing');
-                }});
-                pbtn.textContent='⏹ Parar'; pbtn.classList.add('playing');
-                playTTS(b64, function(){{
-                    pbtn.textContent='▶ Ouvir'; pbtn.classList.remove('playing');
-                }});
+    if(role === 'bot' && b64){{
+        var pbtn = document.createElement('button');
+        pbtn.className = 'bubble-play-btn';
+        pbtn.textContent = '▶ Ouvir';
+
+        pbtn.addEventListener('click', function(){{
+            var isThisPlaying = currentAudio && !currentAudio.paused && currentAudio._srcB64 === b64;
+
+            if(isThisPlaying){{
+                // Estava tocando esta bolha → para
+                stopTTS();
+                return;
             }}
+
+            // Para qualquer outro áudio e reseta todos os botões de bolha
+            if(currentAudio) stopTTS();
+            document.querySelectorAll('.bubble-play-btn').forEach(function(b){{
+                b.textContent = '▶ Ouvir';
+                b.classList.remove('playing');
+            }});
+
+            // Marca este botão como ativo
+            pbtn.textContent = '⏹ Parar';
+            pbtn.classList.add('playing');
+            _activeBubbleBtn = pbtn;
+
+            // Toca o áudio desta bolha — com animação completa do avatar
+            playTTS(b64, function(){{
+                pbtn.textContent = '▶ Ouvir';
+                pbtn.classList.remove('playing');
+                _activeBubbleBtn = null;
+            }}, false);
         }});
+
         histWrap.appendChild(pbtn);
     }}
-    histWrap.scrollTop=histWrap.scrollHeight;
+
+    histWrap.scrollTop = histWrap.scrollHeight;
 }}
 
-// ── Renderiza estado atual ──
+// ══════════════════════════════════════════════════════════════════════════════
+// RENDERIZA ESTADO ATUAL
+// ══════════════════════════════════════════════════════════════════════════════
 if(VM_ERROR){{
-    errBox.textContent=VM_ERROR; errBox.style.display='block';
-}}else{{
-    errBox.style.display='none';
-    if(HISTORY&&HISTORY.length>0){{
+    errBox.textContent = VM_ERROR;
+    errBox.style.display = 'block';
+    enterIdle();
+}} else {{
+    errBox.style.display = 'none';
+    if(HISTORY && HISTORY.length > 0){{
         HISTORY.forEach(function(msg){{
-            var role=msg.role==='user'?'user':'bot';
-            addBubble(role, msg.content, msg.tts_b64||'');
+            var role = msg.role === 'user' ? 'user' : 'bot';
+            addBubble(role, msg.content, msg.tts_b64 || '');
         }});
     }}
-    // Autoplay da resposta mais recente
-    if(TTS_B64) setTimeout(function(){{ playTTS(TTS_B64); }},300);
+    // Autoplay da resposta mais recente (com animação)
+    if(TTS_B64){{
+        setTimeout(function(){{
+            playTTS(TTS_B64, null, GOOD_PRONUNC);
+        }}, 300);
+    }} else {{
+        enterIdle();
+    }}
 }}
 
-// ── Mic ──
-var recording=false;
+// ══════════════════════════════════════════════════════════════════════════════
+// MIC — delega clique ao widget nativo do Streamlit
+// ══════════════════════════════════════════════════════════════════════════════
+var recording = false;
+
 function getRealMicBtn(){{
-    var doc=window.parent.document;
-    var ai=doc.querySelector('[data-testid="stAudioInput"]');
+    var doc = window.parent.document;
+    var ai  = doc.querySelector('[data-testid="stAudioInput"]');
     if(!ai) return null;
-    return ai.querySelector('button')||ai.querySelector('[data-testid="stAudioInputRecordButton"]');
+    return ai.querySelector('button') || ai.querySelector('[data-testid="stAudioInputRecordButton"]');
 }}
-micBtn.addEventListener('click',function(){{
-    var realBtn=getRealMicBtn();
+
+micBtn.addEventListener('click', function(){{
+    var realBtn = getRealMicBtn();
     if(!realBtn) return;
     if(recording){{
+        // Para gravação
         micBtn.classList.remove('recording');
-        micBtn.innerHTML='<i class="fa-solid fa-microphone"></i>';
-        micHint.textContent=TAP_SPEAK;
+        micBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+        micHint.textContent = TAP_SPEAK;
         micBtn.classList.add('processing');
-        recording=false;
+        recording = false;
+        enterProcessing();
         realBtn.click();
-    }}else{{
-        if(currentAudio){{ currentAudio.pause(); currentAudio=null; stopMouthAnim(); ring.classList.remove('active'); }}
+    }} else {{
+        // Inicia gravação
+        if(currentAudio){{ currentAudio.pause(); currentAudio = null; }}
+        _stopAllTimers();
         if(window.parent.speechSynthesis) window.parent.speechSynthesis.cancel();
         micBtn.classList.add('recording');
-        micBtn.innerHTML='<i class="fa-solid fa-stop"></i>';
-        micHint.textContent=TAP_STOP;
-        recording=true;
+        micBtn.innerHTML = '<i class="fa-solid fa-stop"></i>';
+        micHint.textContent = TAP_STOP;
+        recording = true;
+        enterListening();
         realBtn.click();
     }}
 }});
 
 // ── Esconde stAudioInput nativo ──
 function hideNativeAudio(){{
-    var doc=window.parent.document;
-    var ai=doc.querySelector('[data-testid="stAudioInput"]');
+    var doc = window.parent.document;
+    var ai  = doc.querySelector('[data-testid="stAudioInput"]');
     if(ai){{
-        ai.style.cssText='position:fixed;bottom:-999px;left:-9999px;opacity:0;pointer-events:none;width:1px;height:1px;';
-        var btn=ai.querySelector('button');
-        if(btn) btn.style.pointerEvents='auto';
+        ai.style.cssText = 'position:fixed;bottom:-999px;left:-9999px;opacity:0;pointer-events:none;width:1px;height:1px;';
+        var btn = ai.querySelector('button');
+        if(btn) btn.style.pointerEvents = 'auto';
     }}
 }}
 hideNativeAudio();
 try{{
-    var obs=new MutationObserver(hideNativeAudio);
-    obs.observe(window.parent.document.body,{{childList:true,subtree:true}});
-    setTimeout(function(){{obs.disconnect();}},15000);
+    var obs = new MutationObserver(hideNativeAudio);
+    obs.observe(window.parent.document.body, {{childList:true, subtree:true}});
+    setTimeout(function(){{ obs.disconnect(); }}, 15000);
 }}catch(e){{}}
 
-// ── Resize iframe — usa dvh para mobile (esconde barra do browser) ──
+// ── Resize iframe ──
 (function resizeIframe(){{
     try{{
         var par = window.parent;
-        // Altura real do viewport (dvh = dynamic viewport height, funciona no mobile)
-        var h = par.innerHeight;
-        try{{
-            // visualViewport é mais preciso no mobile (exclui teclado virtual)
-            if(par.visualViewport) h = par.visualViewport.height;
-        }}catch(e){{}}
+        var h   = par.innerHeight;
+        try{{ if(par.visualViewport) h = par.visualViewport.height; }}catch(e){{}}
 
         var iframes = par.document.querySelectorAll('iframe');
-        for(var i=0;i<iframes.length;i++){{
+        for(var i = 0; i < iframes.length; i++){{
             try{{
-                if(iframes[i].contentWindow===window){{
-                    iframes[i].style.cssText=[
+                if(iframes[i].contentWindow === window){{
+                    iframes[i].style.cssText = [
                         'height:'+h+'px',
                         'max-height:'+h+'px',
                         'min-height:200px',
@@ -816,12 +920,13 @@ try{{
                         'border:none',
                         'width:100%',
                     ].join(';');
-                    // Remove padding/margin dos wrappers Streamlit
-                    var p=iframes[i].parentElement;
-                    for(var j=0;j<10&&p&&p!==par.document.body;j++){{
-                        p.style.margin='0';p.style.padding='0';
-                        p.style.overflow='hidden';p.style.maxHeight=h+'px';
-                        p=p.parentElement;
+                    var p = iframes[i].parentElement;
+                    for(var j = 0; j < 10 && p && p !== par.document.body; j++){{
+                        p.style.margin  = '0';
+                        p.style.padding = '0';
+                        p.style.overflow  = 'hidden';
+                        p.style.maxHeight = h+'px';
+                        p = p.parentElement;
                     }}
                     break;
                 }}
@@ -829,16 +934,18 @@ try{{
         }}
     }}catch(e){{}}
 
-    // Re-executa ao redimensionar E ao mudar visualViewport (teclado mobile)
     try{{
-        par.removeEventListener('resize',resizeIframe);
-        par.addEventListener('resize',resizeIframe);
+        par.removeEventListener('resize', resizeIframe);
+        par.addEventListener('resize', resizeIframe);
         if(par.visualViewport){{
-            par.visualViewport.removeEventListener('resize',resizeIframe);
-            par.visualViewport.addEventListener('resize',resizeIframe);
+            par.visualViewport.removeEventListener('resize', resizeIframe);
+            par.visualViewport.addEventListener('resize', resizeIframe);
         }}
     }}catch(e){{}}
 }})();
+
+// Estado inicial
+enterIdle();
 
 }})();
 </script>
