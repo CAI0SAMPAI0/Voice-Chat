@@ -91,7 +91,11 @@ def process_voice(raw: bytes, conv_id: str) -> None:
     history.append({"role": "user", "content": txt})
     client = anthropic.Anthropic(api_key=API_KEY)
     # Remove chaves extras (ex: tts_b64) — a API da Anthropic só aceita role + content
-    api_messages = [{"role": m["role"], "content": m["content"]} for m in history]
+    api_messages = [
+        {"role": m["role"], "content": m["content"]}
+        for m in history
+        if m.get("role") in ("user", "assistant") and m.get("content")
+    ]
     resp   = client.messages.create(
         model="claude-haiku-4-5", max_tokens=400,
         system=SYSTEM_PROMPT + context,
@@ -163,11 +167,12 @@ html,body{overflow:hidden!important;}
         if msgs_db:
             st.session_state["_vm_history"] = [
                 {
-                    "role":    m["role"],
-                    "content": m["content"],
-                    "tts_b64": m.get("tts_b64", ""),   # ← preserva áudio por mensagem
+                    "role":    m.get("role", "user"),
+                    "content": m.get("content", ""),
+                    "tts_b64": m.get("tts_b64", ""),
                 }
-                for m in msgs_db if m.get("content")
+                for m in msgs_db
+                if m.get("content") and m.get("role") in ("user", "assistant")
             ]
 
     # Processa áudio recebido — só 1 rerun após processar
