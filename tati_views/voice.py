@@ -60,10 +60,22 @@ TEACHING STYLE:
 - NEVER start uninvited. Wait for the student to speak first.
 - NEVER use EMOTES"""
 
+# formatação
+def _md_to_html(text: str) -> str:
+    import re
+    # Negrito: **texto** → <strong>
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    # Itálico: *texto* ou _texto_ → <em>
+    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    text = re.sub(r'_(.+?)_', r'<em>\1</em>', text)
+    # Sublinhado: __texto__ → <u>
+    text = re.sub(r'__(.+?)__', r'<u>\1</u>', text)
+    # Quebra de linha
+    text = text.replace("\n", "<br>")
+    return text
 
-# =============================================================================
 # PROCESSAR ÁUDIO → CLAUDE → TTS
-# =============================================================================
+
 def process_voice(raw: bytes, conv_id: str) -> None:
     user     = st.session_state.user
     username = user["username"]
@@ -93,7 +105,7 @@ def process_voice(raw: bytes, conv_id: str) -> None:
     # Remove chaves extras (ex: tts_b64) — a API da Anthropic só aceita role + content
     api_messages = [{"role": m["role"], "content": m["content"]} for m in history]
     resp   = client.messages.create(
-        model="claude-haiku-4-5", max_tokens=400,
+        model="claude-haiku-4-5", max_tokens=300,
         system=SYSTEM_PROMPT + context,
         messages=api_messages,
     )
@@ -179,7 +191,7 @@ html,body{overflow:hidden!important;}
 
     # Frames do avatar
     frames    = get_avatar_frames()
-    has_anim  = bool(frames["base"] and frames["closed"] and frames["mid"] and frames["open"])
+    has_anim  = bool(frames["normal"])
 
     # Serializa dados para JS
     history_js  = json.dumps(history)
@@ -191,13 +203,21 @@ html,body{overflow:hidden!important;}
     speaking_   = json.dumps(t("speaking_ai",  lang))
     proc_       = json.dumps(t("processing",   lang))
 
-    av_b64_js   = json.dumps(frames["base"])
-    avc_js      = json.dumps(frames["closed"])
-    avm_js      = json.dumps(frames["mid"])
-    avo_js      = json.dumps(frames["open"])
-    has_anim_js = "true" if has_anim else "false"
-    photo_js    = json.dumps(get_tati_mini_b64() or get_photo_b64())
-    prof_name_js = json.dumps(PROF_NAME)
+    av_normal_js     = json.dumps(frames["normal"])
+    av_meio_js       = json.dumps(frames["meio"])
+    av_aberta_js     = json.dumps(frames["aberta"])
+    av_bem_aberta_js = json.dumps(frames["bem_aberta"])
+    av_ouvindo_js    = json.dumps(frames["ouvindo"])
+    av_piscando_js   = json.dumps(frames["piscando"])
+    av_surpresa_js   = json.dumps(frames["surpresa"])
+    has_anim_js      = "true" if has_anim else "false"
+    photo_js         = json.dumps(get_tati_mini_b64() or get_photo_b64())
+    prof_name_js     = json.dumps(PROF_NAME)
+
+    good_pronunc_js = json.dumps(bool(
+        st.session_state.get("_vm_good_pronunciation", False)
+    ))
+    st.session_state.pop("_vm_good_pronunciation", None)
 
     components.html(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
@@ -447,69 +467,176 @@ input[type=range].ctrl-range::-moz-range-thumb{{
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script>
 (function(){{
-// ── Dados do Python ──
-var TTS_B64    = {tts_js};
-var REPLY      = {reply_js};
-var HISTORY    = {history_js};
-var VM_ERROR   = {err_js};
-var TAP_SPEAK  = {tap_speak};
-var TAP_STOP   = {tap_stop};
-var SPEAKING   = {speaking_};
-var HAS_ANIM   = {has_anim_js};
-var AV_BASE    = {av_b64_js};
-var AV_CLOSED  = {avc_js};
-var AV_MID     = {avm_js};
-var AV_OPEN    = {avo_js};
-var PHOTO      = {photo_js};
-var PROF_NAME  = {prof_name_js};
+// ══════════════════════════════════════════════════════════════════════════════
+// DADOS DO PYTHON
+// ══════════════════════════════════════════════════════════════════════════════
+var TTS_B64      = {tts_js};
+var REPLY        = {reply_js};
+var HISTORY      = {history_js};
+var VM_ERROR     = {err_js};
+var TAP_SPEAK    = {tap_speak};
+var TAP_STOP     = {tap_stop};
+var SPEAKING     = {speaking_};
+var HAS_ANIM     = {has_anim_js};
+var GOOD_PRONUNC = {good_pronunc_js};
+var PHOTO        = {photo_js};
+var PROF_NAME    = {prof_name_js};
 
-// ── Elementos ──
-var micBtn   = document.getElementById('micBtn');
-var micHint  = document.getElementById('micHint');
-var statusTxt= document.getElementById('statusTxt');
-var errBox   = document.getElementById('errBox');
-var ring     = document.getElementById('ring');
-var avImg    = document.getElementById('avImg');
-var avEmoji  = document.getElementById('avEmoji');
-var histWrap = document.getElementById('historyWrap');
-var profName = document.getElementById('profName');
+// 7 frames
+var F_NORMAL     = {av_normal_js};
+var F_MEIO       = {av_meio_js};
+var F_ABERTA     = {av_aberta_js};
+var F_BEM_ABERTA = {av_bem_aberta_js};
+var F_OUVINDO    = {av_ouvindo_js};
+var F_PISCANDO   = {av_piscando_js};
+var F_SURPRESA   = {av_surpresa_js};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ELEMENTOS
+// ══════════════════════════════════════════════════════════════════════════════
+var micBtn    = document.getElementById('micBtn');
+var micHint   = document.getElementById('micHint');
+var statusTxt = document.getElementById('statusTxt');
+var errBox    = document.getElementById('errBox');
+var ring      = document.getElementById('ring');
+var avImg     = document.getElementById('avImg');
+var avEmoji   = document.getElementById('avEmoji');
+var histWrap  = document.getElementById('historyWrap');
+var profName  = document.getElementById('profName');
 
 profName.textContent = PROF_NAME;
 micHint.textContent  = TAP_SPEAK;
 
-// ── Avatar ──
-var photoSrc = HAS_ANIM ? AV_BASE : (PHOTO || AV_BASE);
-if(photoSrc){{ avImg.src=photoSrc; avImg.style.display='block'; avEmoji.style.display='none'; }}
-
-// ── Animação boca ──
-var mouthTimer=null, analyser=null, audioCtx=null, mouthIdx=0;
-function stopMouthAnim(){{
-    if(mouthTimer){{ clearInterval(mouthTimer); mouthTimer=null; }}
-    if(HAS_ANIM && avImg.src !== AV_BASE) avImg.src=AV_BASE;
+// ══════════════════════════════════════════════════════════════════════════════
+// CONTROLE DE FRAME
+// ══════════════════════════════════════════════════════════════════════════════
+var _lastFrame = '';
+function setFrame(src){{
+    if(!src || src === _lastFrame) return;
+    _lastFrame = src;
+    avImg.src  = src;
+    avImg.style.display   = 'block';
+    avEmoji.style.display = 'none';
 }}
-function startMouthAnim(audioEl){{
-    if(!HAS_ANIM) return;
+setFrame(HAS_ANIM ? F_NORMAL : (PHOTO || F_NORMAL));
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÁQUINA DE ESTADOS:  idle | listening | processing | speaking
+// ══════════════════════════════════════════════════════════════════════════════
+var _state      = 'idle';
+var _blinkTimer = null;
+var _mouthTimer = null;
+var _analyser   = null;
+var _audioCtx   = null;
+var _mouthFallbackIdx = 0;
+
+function _stopAllTimers(){{
+    if(_blinkTimer){{ clearTimeout(_blinkTimer); clearInterval(_blinkTimer); _blinkTimer = null; }}
+    if(_mouthTimer){{ clearInterval(_mouthTimer); _mouthTimer = null; }}
+}}
+
+// ── IDLE: normal + piscar natural (3-5s, 150ms fechado) ──────────────────────
+function enterIdle(){{
+    _stopAllTimers();
+    _state = 'idle';
+    setFrame(F_NORMAL);
+    ring.classList.remove('active');
+    statusTxt.textContent = '● Online';
+    function scheduleBlink(){{
+        var delay = 3210 + Math.random() * 2000;
+        _blinkTimer = setTimeout(function(){{
+            if(_state !== 'idle') return;
+            setFrame(F_PISCANDO);
+            setTimeout(function(){{
+                if(_state !== 'idle') return;
+                setFrame(F_NORMAL);
+                scheduleBlink();
+            }}, 150);
+        }}, delay);
+    }}
+    scheduleBlink();
+}}
+
+// ── LISTENING: ouvindo fixo enquanto mic está ativo ──────────────────────────
+function enterListening(){{
+    _stopAllTimers();
+    _state = 'listening';
+    setFrame(F_OUVINDO);
+    ring.classList.remove('active');
+    statusTxt.textContent = '🎙 Ouvindo…';
+}}
+
+// ── PROCESSING: normal com piscada lenta enquanto Claude pensa ───────────────
+function enterProcessing(){{
+    _stopAllTimers();
+    _state = 'processing';
+    setFrame(F_NORMAL);
+    ring.classList.remove('active');
+    statusTxt.textContent = '⏳ Processando…';
+    _blinkTimer = setInterval(function(){{
+        if(_state !== 'processing') return;
+        setFrame(F_PISCANDO);
+        setTimeout(function(){{
+            if(_state !== 'processing') return;
+            setFrame(F_NORMAL);
+        }}, 180);
+    }}, 2200);
+}}
+
+// ── SPEAKING: sincronização labial via Web Audio API ─────────────────────────
+// normal = boca fechada (pausas) | meio = boca aberta (fala)
+function enterSpeaking(audioEl){{
+    _stopAllTimers();
+    _state = 'speaking';
+    ring.classList.add('active');
+    statusTxt.textContent = SPEAKING;
+
+    if(!HAS_ANIM){{ return; }}
+
     try{{
-        if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-        if(!analyser){{
-            analyser=audioCtx.createAnalyser(); analyser.fftSize=256;
-            var src=audioCtx.createMediaElementSource(audioEl);
-            src.connect(analyser); analyser.connect(audioCtx.destination);
+        if(!_audioCtx){{
+            _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }}
-        var buf=new Uint8Array(analyser.frequencyBinCount);
-        mouthTimer=setInterval(function(){{
-            analyser.getByteFrequencyData(buf);
-            var vol=buf.reduce(function(a,b){{return a+b;}},0)/buf.length/128;
-            if(vol<0.05) avImg.src=AV_BASE;
-            else if(vol<0.2) avImg.src=AV_CLOSED;
-            else if(vol<0.5) avImg.src=AV_MID;
-            else avImg.src=AV_OPEN;
-        }},80);
+        if(!_analyser){{
+            _analyser = _audioCtx.createAnalyser();
+            _analyser.fftSize = 1024;
+            _analyser.smoothingTimeConstant = 0.1; // reage rápido ao volume real
+            var src = _audioCtx.createMediaElementSource(audioEl);
+            src.connect(_analyser);
+            _analyser.connect(_audioCtx.destination);
+        }}
+
+        var buf = new Uint8Array(_analyser.frequencyBinCount);
+        _mouthTimer = setInterval(function(){{
+            if(_state !== 'speaking') return;
+            _analyser.getByteFrequencyData(buf);
+            // média simples dos bins de fala
+            var sum = 0, n = Math.min(100, buf.length);
+            for(var i = 4; i < n; i++) sum += buf[i];
+            var avg = sum / (n - 4); // 0..255
+            setFrame(avg < 18 ? F_NORMAL : F_MEIO);
+        }}, 60); // ~16fps — rápido o suficiente para parecer natural
+
     }}catch(e){{
-        mouthTimer=setInterval(function(){{
-            mouthIdx=(mouthIdx+1)%4;
-            avImg.src=[AV_BASE,AV_CLOSED,AV_MID,AV_OPEN][mouthIdx];
-        }},200);
+        // Fallback sem Web Audio: alterna meio↔normal a ~2Hz
+        _mouthFallbackIdx = 0;
+        _mouthTimer = setInterval(function(){{
+            if(_state !== 'speaking') return;
+            setFrame(_mouthFallbackIdx % 2 === 0 ? F_MEIO : F_NORMAL);
+            _mouthFallbackIdx++;
+        }}, 250);
+    }}
+}}
+
+// ── Fim da fala ───────────────────────────────────────────────────────────────
+function onSpeakingEnded(goodPronunc){{
+    _stopAllTimers();
+    if(goodPronunc && F_BEM_ABERTA){{
+        // Pronúncia excelente: reação de aprovação por 1.2s
+        setFrame(F_BEM_ABERTA);
+        setTimeout(function(){{ enterIdle(); }}, 1200);
+    }} else {{
+        enterIdle();
     }}
 }}
 
@@ -568,8 +695,14 @@ function addBubble(role, text, b64){{
     label.textContent=role==='user'?'Você':PROF_NAME;
 
     var bub=document.createElement('div');
-    bub.className='bubble '+role;
-    bub.textContent=text;
+    bub.className = 'bubble ' + role;
+    bub.innerHTML = text
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g,'<em>$1</em>')
+        .replace(/_(.+?)_/g,'<em>$1</em>')
+        .replace(/__(.+?)__/g,'<u>$1</u>')
+        .replace(/\n/g,'<br>');
 
     histWrap.appendChild(label);
     histWrap.appendChild(bub);
