@@ -506,20 +506,19 @@ micHint.textContent  = TAP_SPEAK;
 // CONTROLE DE FRAME
 // ══════════════════════════════════════════════════════════════════════════════
 var _lastFrame = '';
-function setFrame(src) {
-    if (!src) {
-        // frame vazio → cai no fallback
-        if (PHOTO) { avImg.src = PHOTO; avImg.style.display = 'block'; avEmoji.style.display = 'none'; }
-        else        { avImg.style.display = 'none'; avEmoji.style.display = 'flex'; }
+function setFrame(src){{
+    if (!src) {{
+        if (PHOTO) {{ avImg.src = PHOTO; avImg.style.display = 'block'; avEmoji.style.display = 'none'; }}
+        else        {{ avImg.style.display = 'none'; avEmoji.style.display = 'flex'; }}
         _lastFrame = '';
         return;
-    }
+    }}
     if (src === _lastFrame) return;
     _lastFrame = src;
     avImg.src  = src;
     avImg.style.display   = 'block';
     avEmoji.style.display = 'none';
-}
+}}
 // Usa foto estática como fallback quando não há animação
 setFrame(HAS_ANIM ? F_NORMAL : (PHOTO || ''));
 if(!HAS_ANIM && PHOTO){{
