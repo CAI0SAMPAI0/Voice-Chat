@@ -403,7 +403,7 @@ function enterIdle(){{
         }},3210+Math.random()*2000);
     }})();
 }}
-function enterListening(){{_stopAll();_state='listening';setFrame(F_OUVINDO||F_NORMAL);ring.classList.remove('active');statusTxt.textContent='🎙 Ouvindo…';}}
+function enterListening(){{_stopAll();_state='listening';setFrame(F_OUVINDO||F_NORMAL);ring.classList.remove('active');statusTxt.textContent='🎙 Hearing';}}
 function enterProcessing(){{
     _stopAll();_state='processing';setFrame(F_NORMAL);ring.classList.remove('active');statusTxt.textContent='⏳ Processando…';showTyping();
     if(!F_PISCANDO) return;
