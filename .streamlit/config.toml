@@ -1,5 +1,19 @@
-COOKIE_SECRET=30e3e3aaa62b4debc44d3d438185fc5e08c5e5d64ce4933bc9c42d746b478a08
+[theme]
+base            = "dark"
+primaryColor    = "#d0ff00"
+backgroundColor = "#060a10"
+secondaryBackgroundColor = "#0f1824"
+textColor       = "#e6edf3"
+font            = "sans serif"
+
+[server]
+headless             = true
+enableCORS           = false
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
 
 [client]
 showSidebarNavigation = false
-toolbarMode = "minimal" 
+toolbarMode           = "minimal"

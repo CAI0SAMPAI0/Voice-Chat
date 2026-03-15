@@ -2,7 +2,12 @@
 app.py — Teacher Tati · Entry point
 Responsabilidade única: inicializar, autenticar sessão e rotear para a página certa.
 """
+from guards.auth_helper import AuthHelper
+auth = AuthHelper()   # ← UMA instância global
 
+# passa para as funções que precisam
+from tati_views.login import show_login
+show_login(auth)      # ← recebe auth como parâmetro
 import os
 from dotenv import load_dotenv
 load_dotenv()

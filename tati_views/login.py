@@ -61,7 +61,7 @@ def try_cookie_login() -> bool:
 
 # ── Tela de login ─────────────────────────────────────────────────────────────
 
-def show_login() -> None:
+def show_login(auth: AuthHelper) -> None:
     # Tenta auto-login antes de mostrar qualquer coisa
     if try_cookie_login():
         st.rerun()
