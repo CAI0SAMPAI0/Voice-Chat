@@ -1,7 +1,6 @@
 """
 app.py — Teacher Tati · Entry point
 Responsabilidade única: inicializar, autenticar sessão e rotear para a página certa.
-Toda lógica de UI está em pages/ e ui_helpers.py.
 """
 
 import os
@@ -19,13 +18,13 @@ from ui_helpers import (
     js_save_session,
     SESSION_DEFAULTS,
 )
-from tati_views.login     import show_login
+from tati_views.login     import show_login, try_cookie_login
 from tati_views.voice     import show_voice
 from tati_views.settings  import show_settings
 from tati_views.history   import show_history
 from tati_views.dashboard import show_dashboard
 
-# ── Page config — deve ser a primeira chamada Streamlit ──────────────────────
+# ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Tati's Voice English Class",
     page_icon="🎙️",
@@ -64,30 +63,61 @@ inject_global_css()
 # ROUTER
 # =============================================================================
 def main():
-    # ── Tenta auto-login via query param ?s=token ────────────────────────────
-    if not st.session_state.logged_in:
-        _s = st.query_params.get("s", "")
-        if _s and len(_s) > 10:
-            _ud = validate_session(_s)
-            if _ud:
-                _un = _ud.get("_resolved_username") or next(
-                    (k for k, v in load_students().items() if v["password"] == _ud["password"]),
-                    None,
-                )
-                if _un:
-                    st.session_state.logged_in         = True
-                    st.session_state.user              = {"username": _un, **_ud}
-                    st.session_state.page              = "dashboard" if _ud["role"] == "professor" else "voice"
-                    st.session_state.conv_id           = None
-                    st.session_state["_session_token"] = _s
-                    st.rerun()
-            else:
-                st.query_params.pop("s", None)
 
-        show_login()
+    # ── Placeholder vazio — bloqueia renderização prematura ──────────────────
+    # Enquanto verificamos o estado de autenticação, não renderizamos nada.
+    # Isso evita o "flash" de tela errada que você viu na imagem.
+    placeholder = st.empty()
+
+    # ── 1. Já logado nesta sessão — vai direto para a página ─────────────────
+    if st.session_state.logged_in:
+        placeholder.empty()   # limpa o placeholder antes de renderizar
+        _render_page()
         return
 
-    # ── Persiste token na URL / localStorage ─────────────────────────────────
+    # ── 2. Tenta auto-login via cookie HMAC ───────────────────────────────────
+    with placeholder.container():
+        # Mostra tela preta enquanto verifica — sem flash de login
+        st.markdown(
+            "<div style='height:100vh;background:#060a10;'></div>",
+            unsafe_allow_html=True,
+        )
+
+    if try_cookie_login():
+        placeholder.empty()
+        st.rerun()
+        return
+
+    # ── 3. Tenta auto-login via query param ?s=token (fallback legado) ────────
+    _s = st.query_params.get("s", "")
+    if _s and len(_s) > 10:
+        _ud = validate_session(_s)
+        if _ud:
+            _un = _ud.get("_resolved_username") or next(
+                (k for k, v in load_students().items() if v["password"] == _ud["password"]),
+                None,
+            )
+            if _un:
+                st.session_state.logged_in         = True
+                st.session_state.user              = {"username": _un, **_ud}
+                st.session_state.page              = "dashboard" if _ud["role"] == "professor" else "voice"
+                st.session_state.conv_id           = None
+                st.session_state["_session_token"] = _s
+                placeholder.empty()
+                st.rerun()
+                return
+        else:
+            st.query_params.pop("s", None)
+
+    # ── 4. Nenhum auto-login funcionou — mostra tela de login ─────────────────
+    placeholder.empty()
+    show_login()
+
+
+def _render_page():
+    """Renderiza a página correta após autenticação confirmada."""
+
+    # Persiste token na URL / localStorage
     token = st.session_state.get("_session_token", "")
     if token and st.query_params.get("s") != token:
         st.query_params["s"] = token
@@ -95,10 +125,10 @@ def main():
         js_save_session(token)
         st.session_state["_session_saved"] = True
 
-    # ── Sidebar ───────────────────────────────────────────────────────────────
+    # Sidebar
     show_sidebar()
 
-    # ── Roteamento ────────────────────────────────────────────────────────────
+    # Roteamento
     page = st.session_state.page
 
     if page == "voice":
