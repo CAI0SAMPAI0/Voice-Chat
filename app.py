@@ -1,9 +1,12 @@
+"""
+app.py — Teacher Tati · Entry point
+"""
+
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from database import init_db, validate_session, load_students
 from ui_helpers import init_session, inject_global_css, show_sidebar, js_save_session
@@ -25,30 +28,16 @@ st.markdown(
 )
 st.markdown("""
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <style>
-html { height:100dvh; }
-body { min-height:100dvh; background:#060a10 !important; }
-.stApp { min-height:100dvh !important; }
-
-/* ── Anti-flash global: esconde conteúdo até o app estar pronto ── */
-body:not(.pav-ready) [data-testid="stAppViewContainer"] { opacity: 0; }
-body.pav-ready       [data-testid="stAppViewContainer"] {
-    opacity: 1;
-    transition: opacity 0.18s ease;
+html { height: 100dvh; }
+body { min-height: 100dvh; background: #060a10 !important; }
+.stApp { min-height: 100dvh !important; }
+@supports(padding: max(0px)) {
+    .mic-footer { padding-bottom: max(20px, env(safe-area-inset-bottom)) !important; }
 }
 </style>
-<script>
-/* Marca o body como pronto assim que o DOM terminar de montar */
-(function(){
-    function markReady(){
-        document.body.classList.add('pav-ready');
-    }
-    if(document.readyState === 'complete') markReady();
-    else window.addEventListener('load', markReady);
-    /* Garantia: nunca fica escondido mais que 600ms */
-    setTimeout(markReady, 600);
-})();
-</script>
 """, unsafe_allow_html=True)
 
 # ── Init ──────────────────────────────────────────────────────────────────────
@@ -56,7 +45,7 @@ init_db()
 init_session()
 inject_global_css()
 
-# ── Instância única do AuthHelper ─────────────────────────────────────────────
+# ── Instância única do AuthHelper (CookieController) ─────────────────────────
 auth = get_auth()
 
 
@@ -65,12 +54,21 @@ auth = get_auth()
 # =============================================================================
 def main():
 
-    # ── Já logado nesta sessão ────────────────────────────────────────────────
+    # ── Já logado nesta sessão — vai direto ───────────────────────────────────
     if st.session_state.logged_in:
         _render_page()
         return
 
-    # ── Tenta auto-login via cookie HMAC ──────────────────────────────────────
+    # ── Tenta auto-login via cookie ───────────────────────────────────────────
+    # O CookieController precisa de um ciclo de renderização para carregar.
+    # Usamos uma flag para saber se já esperamos esse ciclo.
+    if not st.session_state.get("_cookie_checked"):
+        # Primeiro rerun: marca que já vamos checar, espera o componente carregar
+        st.session_state["_cookie_checked"] = True
+        st.rerun()
+        return
+
+    # Segundo rerun: agora o CookieController já carregou, podemos ler
     token = auth.get_token()
     if token:
         user_data = validate_session(token)
@@ -88,7 +86,7 @@ def main():
                 st.session_state["_session_token"] = token
                 st.rerun()
                 return
-        # Token inválido — limpa
+        # Token inválido — limpa e mostra login
         auth.clear()
 
     # ── Fallback: query param ?s=token ────────────────────────────────────────
@@ -107,21 +105,17 @@ def main():
                 st.session_state.page              = "dashboard" if user_data["role"] == "professor" else "voice"
                 st.session_state.conv_id           = None
                 st.session_state["_session_token"] = _s
-                # Salva no cookie para próximas visitas
                 auth.save(_s)
                 st.rerun()
                 return
         st.query_params.pop("s", None)
 
-    # ── Nenhum auto-login — mostra login ──────────────────────────────────────
+    # ── Nenhum auto-login — mostra tela de login ──────────────────────────────
     from tati_views.login import show_login
     show_login(auth)
 
 
 def _render_page():
-    """Renderiza a página correta após autenticação confirmada."""
-
-    # Persiste token
     token = st.session_state.get("_session_token", "")
     if token and not st.session_state.get("_session_saved"):
         js_save_session(token)
