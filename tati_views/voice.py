@@ -292,7 +292,7 @@ html,body{{background:#060a10;font-family:'Sora',sans-serif;height:100%;overflow
 .avatar-emoji{{width:200px;height:200px;border-radius:50%;background:linear-gradient(135deg,#1a2535,#0f1824);border:3px solid {ring_color};display:flex;align-items:center;justify-content:center;font-size:54px;}}
 .prof-name{{font-size:1rem;font-weight:700;color:#e6edf3;margin-top:6px;}}
 .status{{font-size:.68rem;color:{ring_color};margin-top:1px;}}
-.history-wrap{{width:100%;max-width:860px;flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px 4px;scrollbar-width:thin;scrollbar-color:#1a2535 transparent;-webkit-overflow-scrolling:touch;}}
+.history-wrap{{width:100%;max-width:1100px;flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px 4px;scrollbar-width:thin;scrollbar-color:#1a2535 transparent;-webkit-overflow-scrolling:touch;}}
 .history-wrap::-webkit-scrollbar{{width:4px;}}.history-wrap::-webkit-scrollbar-thumb{{background:#1a2535;border-radius:4px;}}
 .bubble{{max-width:82%;padding:10px 15px;border-radius:18px;font-size:.84rem;line-height:1.55;word-break:break-word;}}
 .bubble.user{{align-self:flex-end;background:{user_bubble_color};color:#fff;border-bottom-right-radius:4px;}}
