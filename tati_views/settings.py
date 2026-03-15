@@ -10,9 +10,12 @@ from database import update_profile, update_password
 from ui_helpers import (
     t, _get_avatar, _avatar_circle_html,
     save_user_avatar, remove_user_avatar,
+    show_toast,
 )
+from guards.page_guard import page_guard, scroll_restore
 
 
+@page_guard
 def show_settings() -> None:
     user     = st.session_state.user
     username = user["username"]
@@ -20,11 +23,7 @@ def show_settings() -> None:
     lang     = profile.get("language", "pt-BR")
 
     # Restaura scroll
-    st.markdown("""<style>
-html,body{overflow:auto!important;}
-section[data-testid="stMain"]>div,.main .block-container{overflow:auto!important;max-height:none!important;}
-div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:revert!important;}
-</style>""", unsafe_allow_html=True)
+    scroll_restore()
 
     st.markdown("<div class='pav-page'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#e6edf3;margin-bottom:1rem;'>⚙️ {t('settings',lang)}</h2>",
@@ -70,9 +69,9 @@ div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper
 
     msg = st.session_state.pop("_photo_msg", None)
     if msg == "saved":
-        st.success(t("photo_saved", lang))
+        show_toast(t("photo_saved", lang), type="success")
     elif msg == "removed":
-        st.success(t("photo_removed", lang))
+        show_toast(t("photo_removed", lang), type="success")
 
     st.markdown("<hr style='border-color:#1a2535;margin:1.2rem 0;'>", unsafe_allow_html=True)
 
@@ -93,7 +92,7 @@ div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper
         if ok:
             st.session_state.user["name"]  = new_name
             st.session_state.user["email"] = new_email
-            st.success(t("data_saved", lang))
+            show_toast(t("data_saved", lang), type="success")
         else:
             st.error(t("save_error", lang))
 
@@ -115,7 +114,10 @@ div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper
             st.error(t("pwd_too_short", lang))
         else:
             ok = update_password(username, new_pw)
-            st.success(t("pwd_changed", lang)) if ok else st.error(t("pwd_error", lang))
+            if ok:
+                show_toast(t("pwd_changed", lang), type="success")
+            else:
+                st.error(t("pwd_error", lang))
 
     st.markdown("<hr style='border-color:#1a2535;margin:1.2rem 0;'>", unsafe_allow_html=True)
 
@@ -145,7 +147,7 @@ div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper
             st.session_state.user["level"]   = new_level
             st.session_state.user["focus"]   = new_focus
             st.session_state.user["profile"] = p
-            st.success(t("data_saved", lang))
+            show_toast(t("data_saved", lang), type="success")
         else:
             st.error(t("save_error", lang))
 
@@ -182,7 +184,7 @@ div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper
         ok = update_profile(username, p)
         if ok:
             st.session_state.user["profile"] = p
-            st.success(t("reload_lang", lang))
+            show_toast(t("reload_lang", lang), type="success")
         else:
             st.error(t("save_error", lang))
 
@@ -232,7 +234,7 @@ div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper
         ok = update_profile(username, p)
         if ok:
             st.session_state.user["profile"] = p
-            st.success(t("data_saved", lang))
+            show_toast(t("data_saved", lang), type="success")
         else:
             st.error(t("save_error", lang))
 

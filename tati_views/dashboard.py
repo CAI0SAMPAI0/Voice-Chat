@@ -6,18 +6,16 @@ Bug corrigido: lia 'total_messages' mas banco retornava 'messages' → agora pad
 import streamlit as st
 from database import get_all_students_stats
 from ui_helpers import t
+from guards.page_guard import page_guard, scroll_restore
 
 
+@page_guard
 def show_dashboard() -> None:
     profile = st.session_state.user.get("profile", {})
     lang    = profile.get("language", "pt-BR")
 
     # Restaura scroll
-    st.markdown("""<style>
-html,body{overflow:auto!important;}
-section[data-testid="stMain"]>div,.main .block-container{overflow:auto!important;max-height:none!important;}
-div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:revert!important;}
-</style>""", unsafe_allow_html=True)
+    scroll_restore()
 
     st.markdown("<div class='pav-page'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#e6edf3;margin-bottom:1rem;'>📊 {t('dashboard',lang)}</h2>",

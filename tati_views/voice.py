@@ -372,7 +372,7 @@ var _state='idle',_blinkTimer=null,_mouthTimer=null,_analyser=null,_audioCtx=nul
 function _stopAll(){{clearTimeout(_blinkTimer);clearInterval(_blinkTimer);clearInterval(_mouthTimer);_blinkTimer=_mouthTimer=null;}}
 
 function enterIdle(){{
-    _stopAll();_state='idle';setFrame(F_NORMAL);
+    _stopAll();clearTyping();_state='idle';setFrame(F_NORMAL);
     ring.classList.remove('active');statusTxt.textContent='● Online';
     if(!F_PISCANDO) return;
     (function blink(){{
@@ -385,12 +385,12 @@ function enterIdle(){{
 }}
 function enterListening(){{_stopAll();_state='listening';setFrame(F_OUVINDO||F_NORMAL);ring.classList.remove('active');statusTxt.textContent='🎙 Ouvindo…';}}
 function enterProcessing(){{
-    _stopAll();_state='processing';setFrame(F_NORMAL);ring.classList.remove('active');statusTxt.textContent='⏳ Processando…';
+    _stopAll();_state='processing';setFrame(F_NORMAL);ring.classList.remove('active');statusTxt.textContent='⏳ Processando…';showTyping();
     if(!F_PISCANDO) return;
     _blinkTimer=setInterval(function(){{if(_state!=='processing') return;setFrame(F_PISCANDO);setTimeout(function(){{if(_state==='processing') setFrame(F_NORMAL);}},180);}},2200);
 }}
 function enterSpeaking(audioEl){{
-    _stopAll();_state='speaking';ring.classList.add('active');statusTxt.textContent=SPEAKING;
+    _stopAll();clearTyping();_state='speaking';ring.classList.add('active');statusTxt.textContent=SPEAKING;
     if(!F_MEIO) return;
     try{{
         if(!_audioCtx) _audioCtx=new (window.AudioContext||window.webkitAudioContext)();
@@ -406,7 +406,7 @@ function enterSpeaking(audioEl){{
     }}catch(e){{_mfIdx=0;_mouthTimer=setInterval(function(){{if(_state==='speaking') setFrame(_mfIdx++%2===0?F_MEIO:F_NORMAL);}},250);}}
 }}
 function onSpeakingEnded(){{
-    _stopAll();_analyser=null;
+    _stopAll();clearTyping();_analyser=null;
     if(GOOD_PRONUNC&&F_BEM_ABERTA){{setFrame(F_BEM_ABERTA);setTimeout(enterIdle,1200);}}
     else enterIdle();
 }}

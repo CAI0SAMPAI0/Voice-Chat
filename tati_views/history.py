@@ -17,8 +17,10 @@ from database import (
     new_conversation,
 )
 from ui_helpers import t, PROF_NAME
+from guards.page_guard import page_guard, scroll_restore
 
 
+@page_guard
 def show_history() -> None:
     user     = st.session_state.user
     username = user["username"]
@@ -26,11 +28,7 @@ def show_history() -> None:
     lang     = profile.get("language", "pt-BR")
 
     # Restaura scroll
-    st.markdown("""<style>
-html,body{overflow:auto!important;}
-section[data-testid="stMain"]>div,.main .block-container{overflow:auto!important;max-height:none!important;}
-div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:revert!important;}
-</style>""", unsafe_allow_html=True)
+    scroll_restore()
 
     st.markdown("""<style>
 .hist-header{display:flex;align-items:center;gap:12px;padding:0 0 1.2rem;margin-bottom:1rem;border-bottom:1px solid #1a2535;}

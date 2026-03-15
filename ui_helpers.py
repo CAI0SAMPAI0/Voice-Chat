@@ -333,6 +333,55 @@ def js_toggle_sidebar() -> None:
     _js_run("sidebar.js")
 
 
+# =============================================================================
+# TOAST NOTIFICATIONS
+# =============================================================================
+
+
+def show_toast(message: str, type: str = "success") -> None:
+    """Exibe um toast no canto superior direito."""
+    bg = "#2d6a4f" if type == "success" else "#e05c2a"
+    js = f"""
+    (function(){{
+      var doc = window.parent ? window.parent.document : document;
+      var root = doc.getElementById('pav-toast-root');
+      if(!root) {{
+        root = doc.createElement('div');
+        root.id = 'pav-toast-root';
+        root.style.position = 'fixed';
+        root.style.top = '16px';
+        root.style.right = '16px';
+        root.style.zIndex = '99999';
+        root.style.display = 'flex';
+        root.style.flexDirection = 'column';
+        root.style.gap = '8px';
+        doc.body.appendChild(root);
+      }}
+      var el = doc.createElement('div');
+      el.textContent = {json.dumps(message)};
+      el.style.background = '{bg}';
+      el.style.color = '#fff';
+      el.style.padding = '10px 14px';
+      el.style.borderRadius = '8px';
+      el.style.fontSize = '.78rem';
+      el.style.boxShadow = '0 4px 16px rgba(0,0,0,0.35)';
+      el.style.maxWidth = '260px';
+      el.style.fontFamily = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+      root.appendChild(el);
+      setTimeout(function(){{
+        el.style.transition = 'opacity .3s ease, transform .3s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-4px)';
+        setTimeout(function(){{ if(el.parentNode) el.parentNode.removeChild(el); }}, 320);
+      }}, 2600);
+    }})();
+    """
+    components.html(
+        f"<!DOCTYPE html><html><body><script>{js}</script></body></html>",
+        height=0,
+    )
+
+
 def get_or_create_conv(username: str) -> str:
     from database import list_conversations
     if st.session_state.conv_id:
