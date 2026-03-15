@@ -77,6 +77,14 @@ div[data-testid="stButton"] > button {
 /* ── Container de página (history, settings, dashboard) ────────── */
 .pav-page { padding: 1.5rem 2rem; max-width: 820px; }
 
-div[data-testid="manage-app-button"] > button{
-  visibility: hidden;
+[data-testid="manage-app-button"],
+[data-testid="manage-app-button"] > button,
+.stAppDeployButton,
+button[kind="managedDeployButton"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
 }
