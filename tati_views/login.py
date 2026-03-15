@@ -44,18 +44,56 @@ def show_login(auth: AuthHelper) -> None:
     from asset_loader import inject_css
     inject_css("login")
 
-    # ── Libera scroll na tela de login (global.css e voice.css travam overflow) ──
+    # ── Libera scroll na tela de login ──────────────────────────────────────────
+    # Deve vir DEPOIS do inject_css para sobrescrever global.css e login.css
     st.markdown("""<style>
-html { overflow: auto !important; height: auto !important; }
-body { overflow-y: auto !important; overflow-x: hidden !important; min-height: 100vh !important; height: auto !important; }
-.stApp { overflow-y: auto !important; overflow-x: hidden !important; min-height: 100vh !important; height: auto !important; }
-[data-testid="stAppViewContainer"] { overflow: visible !important; min-height: 100vh !important; height: auto !important; }
-section[data-testid="stMain"] { overflow-y: auto !important; overflow-x: hidden !important; min-height: 100vh !important; height: auto !important; max-height: none !important; }
-section[data-testid="stMain"] > div { overflow: visible !important; height: auto !important; max-height: none !important; padding-bottom: 80px !important; }
-.main .block-container { overflow: visible !important; height: auto !important; max-height: none !important; padding-bottom: 80px !important; }
+/* Desfaz o height: -webkit-fill-available do global.css */
+html {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+}
+/* Desfaz o min-height: 100vh travado do global.css */
+body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    background: #060a10 !important;
+}
+/* stApp e containers principais */
+.stApp,
+[data-testid="stAppViewContainer"] {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+}
+/* stMain é quem realmente corta o conteúdo */
+section[data-testid="stMain"],
+section[data-testid="stMain"] > div {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+/* block-container: espaço interno do formulário */
+.main .block-container {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-top: 1rem !important;
+    padding-bottom: 100px !important;
+}
+/* Todos os blocos verticais do Streamlit */
 div[data-testid="stVerticalBlock"],
 div[data-testid="stVerticalBlockBorderWrapper"],
-div[data-testid="element-container"] { overflow: visible !important; max-height: none !important; height: auto !important; }
+div[data-testid="element-container"],
+div[data-testid="stFormSubmitButton"] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+}
 </style>""", unsafe_allow_html=True)
 
     # ── Card visual ───────────────────────────────────────────────────────────
