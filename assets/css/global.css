@@ -80,7 +80,10 @@ div[data-testid="stButton"] > button {
 [data-testid="manage-app-button"],
 [data-testid="manage-app-button"] > button,
 .stAppDeployButton,
-button[kind="managedDeployButton"] {
+button[kind="managedDeployButton"],
+#stDecoration,
+iframe[title="streamlit_app"],
+div[class*="StatusWidget"] {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;

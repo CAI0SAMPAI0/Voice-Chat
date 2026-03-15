@@ -3,25 +3,12 @@ import os
 import re
 import tempfile
 
-
-def tts_available() -> bool:
-    return True
+from typing import Optional
 
 
-def text_to_speech(text: str) -> bytes | None:
-    try:
-        from gtts import gTTS
-        text = re.sub(r'\*+', '', text).strip()[:600]
-        if not text:
-            return None
-        mp3_fp = io.BytesIO()
-        gTTS(text=text, lang='en', tld='com', slow=False).write_to_fp(mp3_fp)
-        mp3_fp.seek(0)
-        return mp3_fp.read()
-    except Exception as e:
-        print(f"❌ TTS: {e}")
-        return None
-
+# =============================================================================
+# TRANSCRIPTION
+# =============================================================================
 
 _CORRECTIONS: list[tuple[str, str]] = [
     (r"\bsh[ei]t[\s-]?on\b",    "Tatiana"),
@@ -66,9 +53,9 @@ def _apply_corrections(text: str) -> str:
 def transcribe_bytes(
     audio_bytes: bytes,
     suffix: str = ".wav",
-    language: str = None,
+    language: Optional[str] = None,
 ) -> str:
-    tmp_path = None
+    tmp_path: Optional[str] = None
     try:
         from groq import Groq
 
@@ -83,21 +70,16 @@ def transcribe_bytes(
             tmp_path = tmp.name
 
         with open(tmp_path, "rb") as f:
+            kwargs = {
+                "file": (f"audio{suffix}", f, "audio/webm"),
+                "model": "whisper-large-v3-turbo",
+                "prompt": _GROQ_PROMPT,
+                "response_format": "text",
+            }
             if language and language not in ("auto", ""):
-                transcription = client.audio.transcriptions.create(
-                    file=(f"audio{suffix}", f, "audio/webm"),
-                    model="whisper-large-v3-turbo",
-                    prompt=_GROQ_PROMPT,
-                    response_format="text",
-                    language=language,
-                )
-            else:
-                transcription = client.audio.transcriptions.create(
-                    file=(f"audio{suffix}", f, "audio/webm"),
-                    model="whisper-large-v3-turbo",
-                    prompt=_GROQ_PROMPT,
-                    response_format="text",
-                )
+                kwargs["language"] = language
+
+            transcription = client.audio.transcriptions.create(**kwargs)
 
         text = transcription if isinstance(transcription, str) else transcription.text
         text = _apply_corrections(text.strip())
@@ -113,3 +95,47 @@ def transcribe_bytes(
                 os.unlink(tmp_path)
             except Exception:
                 pass
+
+
+# =============================================================================
+# TTS
+# =============================================================================
+
+
+def tts_available() -> bool:
+    return True
+
+
+def _sanitize_tts_text(text: str) -> str:
+    """
+    Remove caracteres problemáticos e markdown antes de mandar para o gTTS.
+    Limita em 600 caracteres e normaliza espaços.
+    """
+    # Remove markdown básico
+    text = re.sub(r"(\*\*|\*|`|_|#)", "", text)
+    # Remove caracteres especiais que podem quebrar o TTS
+    text = text.replace("<", " ").replace(">", " ")
+    text = text.replace("&", " ").replace('"', " ").replace("'", " ")
+    # Normaliza espaços múltiplos
+    text = re.sub(r"\s+", " ", text)
+    # Limita tamanho
+    return text.strip()[:600]
+
+
+def text_to_speech(text: str) -> Optional[bytes]:
+    try:
+        from gtts import gTTS
+
+        clean = _sanitize_tts_text(text)
+        if not clean:
+            return None
+
+        mp3_fp = io.BytesIO()
+        tts = gTTS(text=clean, lang="en", tld="com", slow=False)
+        tts.write_to_fp(mp3_fp)
+        mp3_fp.seek(0)
+        return mp3_fp.read()
+    except Exception as e:
+        print(f"❌ TTS: {e}")
+        return None
+

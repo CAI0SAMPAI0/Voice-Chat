@@ -43,3 +43,4 @@ app1.py
 .streamlit/config.toml
 assets/README.md
 README.md
+.venv/

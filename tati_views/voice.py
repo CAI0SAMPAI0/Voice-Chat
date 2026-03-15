@@ -11,8 +11,7 @@ from database import (
     list_conversations,
     append_message,
 )
-from transcriber import transcribe_bytes
-from tts import text_to_speech, tts_available
+from audio_services import transcribe_bytes, text_to_speech, tts_available
 from ui_helpers import (
     PROF_NAME,
     get_photo_b64,
@@ -136,8 +135,7 @@ def process_voice(raw: bytes, conv_id: str) -> None:
     )
 
     # ── Atualiza histórico em memória ─────────────────────────────────────────
-    # IMPORTANTE: adiciona user E assistant COM tts_b64
-    # sem tts_b64 no dict o botão "ouvir" não aparece na bolha nova
+    # Ordem: transcrição → IA → TTS → histórico + estado
     history.append({"role": "user",      "content": txt,   "tts_b64": ""})
     history.append({"role": "assistant", "content": reply, "tts_b64": tts_b64})
     st.session_state["_vm_history"] = history
@@ -178,9 +176,9 @@ html,body{overflow:hidden!important;}
 
     conv_id = get_or_create_conv(username)
 
-    # ── Carrega histórico do banco se memória estiver vazia ───────────────────
+    # ── Carrega histórico do banco se memória estiver vazia (lazy: últimas 30) ─
     if not st.session_state.get("_vm_history") and conv_id:
-        msgs_db = load_conversation(username, conv_id)
+        msgs_db = load_conversation(username, conv_id, limit=30)
         if msgs_db:
             st.session_state["_vm_history"] = [
                 {

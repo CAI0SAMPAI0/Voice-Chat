@@ -19,11 +19,13 @@ import secrets
 from datetime import datetime
 
 import bcrypt
+import streamlit as st
 from supabase import create_client, Client
 
 
-# ── Cliente Supabase ──────────────────────────────────────────────────────────
+# ── Cliente Supabase (com cache) ──────────────────────────────────────────────
 
+@st.cache_resource(ttl=3600)
 def get_client() -> Client:
     url = os.getenv("SUPABASE_URL", "")
     key = os.getenv("SUPABASE_KEY", "")
@@ -402,28 +404,32 @@ def _list_conversations_fallback(username: str, db: Client) -> list:
     return result
 
 
-def load_conversation(username: str, conv_id: str) -> list:
+def load_conversation(username: str, conv_id: str, limit: int | None = None) -> list:
     db = get_client()
     try:
-        rows = db.rpc("load_conversation", {
+        params = {
             "p_username": username,
             "p_conv_id":  conv_id,
-        }).execute().data or []
+        }
+        if limit is not None:
+            params["p_limit"] = int(limit)
+        rows = db.rpc("load_conversation", params).execute().data or []
         for r in rows:
             if "msg_time" in r:
                 r["time"]      = r.pop("msg_time")
                 r["date"]      = r.pop("msg_date")
                 r["timestamp"] = r.pop("msg_timestamp")
     except Exception:
-        rows = (
+        q = (
             db.table("messages")
             .select("*")
             .eq("username", username)
             .eq("conv_id", conv_id)
-            .order("id")
-            .execute()
-            .data or []
+            .order("id", desc=True)
         )
+        if limit is not None:
+            q = q.limit(int(limit))
+        rows = list(reversed(q.execute().data or []))
     return rows
 
 
