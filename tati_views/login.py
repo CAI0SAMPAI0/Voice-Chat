@@ -44,6 +44,25 @@ def show_login(auth: AuthHelper) -> None:
     from asset_loader import inject_css
     inject_css("login")
 
+    # ── Libera scroll na tela de login (global.css e voice.css travam overflow) ──
+    st.markdown("""<style>
+html, body,
+.stApp,
+[data-testid="stAppViewContainer"],
+section[data-testid="stMain"],
+section[data-testid="stMain"] > div,
+.main .block-container {
+    overflow: auto !important;
+    overflow-x: hidden !important;
+    max-height: none !important;
+    height: auto !important;
+}
+div[data-testid="stVerticalBlock"] {
+    overflow: visible !important;
+    max-height: none !important;
+}
+</style>""", unsafe_allow_html=True)
+
     # ── Card visual ───────────────────────────────────────────────────────────
     # A foto é renderizada como background de um div circular (não como <img>)
     # para garantir que o círculo funcione corretamente em todos os navegadores.
