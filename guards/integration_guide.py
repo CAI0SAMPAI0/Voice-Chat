@@ -1,3 +1,8 @@
+"""
+PATCH para ui_helpers.py — função _logout() integrada com AuthHelper.
+Substitua a função _logout() existente por esta versão.
+"""
+
 from guards.auth_helper import AuthHelper
 _auth = AuthHelper()
 
