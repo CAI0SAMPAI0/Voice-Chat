@@ -1,13 +1,3 @@
-"""
-app.py — Teacher Tati · Entry point
-Responsabilidade única: inicializar, autenticar sessão e rotear para a página certa.
-"""
-from guards.auth_helper import AuthHelper
-auth = AuthHelper()   # ← UMA instância global
-
-# passa para as funções que precisam
-from tati_views.login import show_login
-show_login(auth)      # ← recebe auth como parâmetro
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -16,18 +6,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from database import init_db, validate_session, load_students
-from ui_helpers import (
-    init_session,
-    inject_global_css,
-    show_sidebar,
-    js_save_session,
-    SESSION_DEFAULTS,
-)
-from tati_views.login     import show_login, try_cookie_login
-from tati_views.voice     import show_voice
-from tati_views.settings  import show_settings
-from tati_views.history   import show_history
-from tati_views.dashboard import show_dashboard
+from ui_helpers import init_session, inject_global_css, show_sidebar, js_save_session
+from guards.auth_helper import get_auth
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -44,18 +24,31 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown("""
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,maximum-scale=1.0">
 <style>
-html { height: 100dvh; }
-body { min-height: 100dvh; background: #060a10 !important; }
-.stApp { min-height: 100dvh !important; }
-@supports(padding: max(0px)) {
-    .mic-footer { padding-bottom: max(20px, env(safe-area-inset-bottom)) !important; }
+html { height:100dvh; }
+body { min-height:100dvh; background:#060a10 !important; }
+.stApp { min-height:100dvh !important; }
+
+/* ── Anti-flash global: esconde conteúdo até o app estar pronto ── */
+body:not(.pav-ready) [data-testid="stAppViewContainer"] { opacity: 0; }
+body.pav-ready       [data-testid="stAppViewContainer"] {
+    opacity: 1;
+    transition: opacity 0.18s ease;
 }
 </style>
+<script>
+/* Marca o body como pronto assim que o DOM terminar de montar */
+(function(){
+    function markReady(){
+        document.body.classList.add('pav-ready');
+    }
+    if(document.readyState === 'complete') markReady();
+    else window.addEventListener('load', markReady);
+    /* Garantia: nunca fica escondido mais que 600ms */
+    setTimeout(markReady, 600);
+})();
+</script>
 """, unsafe_allow_html=True)
 
 # ── Init ──────────────────────────────────────────────────────────────────────
@@ -63,86 +56,91 @@ init_db()
 init_session()
 inject_global_css()
 
+# ── Instância única do AuthHelper ─────────────────────────────────────────────
+auth = get_auth()
+
 
 # =============================================================================
 # ROUTER
 # =============================================================================
 def main():
 
-    # ── Placeholder vazio — bloqueia renderização prematura ──────────────────
-    # Enquanto verificamos o estado de autenticação, não renderizamos nada.
-    # Isso evita o "flash" de tela errada que você viu na imagem.
-    placeholder = st.empty()
-
-    # ── 1. Já logado nesta sessão — vai direto para a página ─────────────────
+    # ── Já logado nesta sessão ────────────────────────────────────────────────
     if st.session_state.logged_in:
-        placeholder.empty()   # limpa o placeholder antes de renderizar
         _render_page()
         return
 
-    # ── 2. Tenta auto-login via cookie HMAC ───────────────────────────────────
-    with placeholder.container():
-        # Mostra tela preta enquanto verifica — sem flash de login
-        st.markdown(
-            "<div style='height:100vh;background:#060a10;'></div>",
-            unsafe_allow_html=True,
-        )
-
-    if try_cookie_login():
-        placeholder.empty()
-        st.rerun()
-        return
-
-    # ── 3. Tenta auto-login via query param ?s=token (fallback legado) ────────
-    _s = st.query_params.get("s", "")
-    if _s and len(_s) > 10:
-        _ud = validate_session(_s)
-        if _ud:
-            _un = _ud.get("_resolved_username") or next(
-                (k for k, v in load_students().items() if v["password"] == _ud["password"]),
+    # ── Tenta auto-login via cookie HMAC ──────────────────────────────────────
+    token = auth.get_token()
+    if token:
+        user_data = validate_session(token)
+        if user_data:
+            username = user_data.get("_resolved_username") or next(
+                (k for k, v in load_students().items()
+                 if v["password"] == user_data["password"]),
                 None,
             )
-            if _un:
+            if username:
                 st.session_state.logged_in         = True
-                st.session_state.user              = {"username": _un, **_ud}
-                st.session_state.page              = "dashboard" if _ud["role"] == "professor" else "voice"
+                st.session_state.user              = {"username": username, **user_data}
+                st.session_state.page              = "dashboard" if user_data["role"] == "professor" else "voice"
                 st.session_state.conv_id           = None
-                st.session_state["_session_token"] = _s
-                placeholder.empty()
+                st.session_state["_session_token"] = token
                 st.rerun()
                 return
-        else:
-            st.query_params.pop("s", None)
+        # Token inválido — limpa
+        auth.clear()
 
-    # ── 4. Nenhum auto-login funcionou — mostra tela de login ─────────────────
-    placeholder.empty()
-    show_login()
+    # ── Fallback: query param ?s=token ────────────────────────────────────────
+    _s = st.query_params.get("s", "")
+    if _s and len(_s) > 10:
+        user_data = validate_session(_s)
+        if user_data:
+            username = user_data.get("_resolved_username") or next(
+                (k for k, v in load_students().items()
+                 if v["password"] == user_data["password"]),
+                None,
+            )
+            if username:
+                st.session_state.logged_in         = True
+                st.session_state.user              = {"username": username, **user_data}
+                st.session_state.page              = "dashboard" if user_data["role"] == "professor" else "voice"
+                st.session_state.conv_id           = None
+                st.session_state["_session_token"] = _s
+                # Salva no cookie para próximas visitas
+                auth.save(_s)
+                st.rerun()
+                return
+        st.query_params.pop("s", None)
+
+    # ── Nenhum auto-login — mostra login ──────────────────────────────────────
+    from tati_views.login import show_login
+    show_login(auth)
 
 
 def _render_page():
     """Renderiza a página correta após autenticação confirmada."""
 
-    # Persiste token na URL / localStorage
+    # Persiste token
     token = st.session_state.get("_session_token", "")
-    if token and st.query_params.get("s") != token:
-        st.query_params["s"] = token
     if token and not st.session_state.get("_session_saved"):
         js_save_session(token)
         st.session_state["_session_saved"] = True
 
-    # Sidebar
     show_sidebar()
 
-    # Roteamento
     page = st.session_state.page
-
     if page == "voice":
+        from tati_views.voice import show_voice
         show_voice()
     elif page == "settings":
+        from tati_views.settings import show_settings
         show_settings()
     elif page == "history":
+        from tati_views.history import show_history
         show_history()
     elif page == "dashboard" and st.session_state.user.get("role") == "professor":
+        from tati_views.dashboard import show_dashboard
         show_dashboard()
     else:
         st.session_state.page = "voice"
