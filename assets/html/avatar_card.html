@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<style>
+/* Reset mínimo — este template roda dentro de um iframe */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: #060a10;
+  font-family: 'Sora', sans-serif;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.card {
+  background: linear-gradient(180deg, #0f1824, #0a1020);
+  border: 1px solid #1a2535;
+  border-radius: 24px;
+  padding: 28px 24px 20px;
+  width: 100%;
+  box-shadow: 0 24px 64px rgba(0,0,0,.7);
+  display: flex; flex-direction: column; align-items: center;
+}
+.av {
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  object-fit: cover; object-position: top center;
+  border: 2.5px solid {{RING_COLOR}};
+  box-shadow: 0 0 0 6px {{RING_COLOR_DIM}}, 0 0 28px {{RING_COLOR_GLOW}};
+  display: block; margin-bottom: 12px;
+}
+.av-emoji {
+  width: 90px; height: 90px; border-radius: 50%;
+  background: linear-gradient(135deg, #6c3fc5, #8b5cf6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 38px; margin-bottom: 12px;
+}
+h2 {
+  font-size: 1.35rem; font-weight: 800; text-align: center; margin: 0 0 3px;
+  background: linear-gradient(135deg, #8b5cf6 30%, #c084fc 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+p { font-size: .7rem; color: #3a4e5e; text-align: center; }
+</style></head><body>
+<div class="card">
+  {{AVATAR_HTML}}
+  <h2>{{PROF_NAME}}</h2>
+  <p>{{SUBTITLE}}</p>
+</div>
+</body></html>

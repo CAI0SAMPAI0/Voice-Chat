@@ -40,3 +40,6 @@ wav2lip_colab.ipynb
 
 roadmap.md
 app1.py
+.streamlit/config.toml
+assets/README.md
+README.md

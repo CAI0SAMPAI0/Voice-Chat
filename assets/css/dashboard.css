@@ -1,0 +1,54 @@
+/* ═══════════════════════════════════════
+   dashboard.css — Métricas, tabela alunos
+   ═══════════════════════════════════════ */
+
+.metric-card {
+  background:    var(--bg-secondary);
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding:       16px;
+  text-align:    center;
+  transition:    var(--transition);
+}
+.metric-card:hover { border-color: var(--border-hover); }
+.metric-icon  { font-size: 1.6rem; }
+.metric-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+.metric-label { font-size: .7rem;  color: var(--text-muted); margin-top: 2px; }
+
+.section-label {
+  color:          var(--text-secondary);
+  font-size:      .85rem;
+  letter-spacing: .5px;
+  margin-bottom:  .5rem;
+  text-transform: uppercase;
+}
+
+/* ── Login ────────────────────────────── */
+.login-card {
+  background:    linear-gradient(180deg, var(--bg-secondary), var(--bg-input));
+  border:        1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding:       28px 24px 20px;
+  width:         100%;
+  box-shadow:    var(--shadow-card);
+  display:       flex;
+  flex-direction: column;
+  align-items:   center;
+}
+
+/* Botão primário no login (submit e aba ativa) */
+div[data-testid="stFormSubmitButton"] > button,
+div[data-testid="stButton"] > button[kind="primary"],
+div[data-testid="stButton"] > button[data-testid="baseButton-primary"] {
+  background:  linear-gradient(135deg, #6c3fc5, #8b5cf6) !important;
+  border:      1px solid #7c4dcc !important;
+  color:       #fff              !important;
+  border-radius: var(--radius-md) !important;
+  font-weight: 700               !important;
+  box-shadow:  0 0 14px var(--purple-glow) !important;
+}
+div[data-testid="stFormSubmitButton"] > button:hover,
+div[data-testid="stButton"] > button[kind="primary"]:hover {
+  background:  linear-gradient(135deg, #7c4dcc, #9d6ff7) !important;
+  box-shadow:  0 0 22px var(--purple-glow) !important;
+}

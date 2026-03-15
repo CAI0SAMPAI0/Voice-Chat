@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: #060a10; font-family: 'Sora', sans-serif;
+  height: 100%; overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* Variáveis passadas pelo Python */
+:root {
+  --ring-color:        {{RING_COLOR}};
+  --ring-dim:          {{RING_COLOR_DIM}};
+  --ring-glow:         {{RING_COLOR_GLOW}};
+  --user-bubble:       {{USER_BUBBLE_COLOR}};
+  --bot-bubble:        {{BOT_BUBBLE_COLOR}};
+}
+/* ── Os CSS externos são embutidos aqui pelo Python (load_css) ── */
+{{VOICE_CSS}}
+{{AUDIO_CONTROLS_EXTRA}}
+</style>
+</head><body>
+
+<div class="voice-app" id="app">
+
+  <!-- Avatar -->
+  <div class="avatar-section">
+    <div class="avatar-wrap">
+      <div class="avatar-ring" id="ring"></div>
+      <img id="avImg" class="avatar-img" src="" alt=""
+           style="display:none;"
+           onerror="this.style.display='none';document.getElementById('avEmoji').style.display='flex';">
+      <div id="avEmoji" class="avatar-emoji">&#129489;&#8205;&#127979;</div>
+    </div>
+    <div class="prof-name" id="profName"></div>
+    <div class="status-txt" id="statusTxt">&#9679; Online</div>
+  </div>
+
+  <!-- Histórico de bolhas -->
+  <div class="history-wrap" id="historyWrap"></div>
+
+  <!-- Erro -->
+  <div class="error-box" id="errBox" style="display:none;"></div>
+
+  <!-- Rodapé: controles + microfone -->
+  <div class="mic-footer">
+    <div class="audio-controls" id="audioControls">
+      <button id="global-play-btn">&#9654; Ouvir</button>
+      <span class="ctrl-label">Vol</span>
+      <input type="range" class="ctrl-range" id="vol-slider" min="0" max="1" step="0.05" value="1">
+      <span class="ctrl-val" id="vol-val">100%</span>
+      <span class="ctrl-label">Vel</span>
+      <input type="range" class="ctrl-range" id="spd-slider" min="0.5" max="2" step="0.1" value="1">
+      <span class="ctrl-val" id="spd-val">1.0x</span>
+    </div>
+    <button class="mic-btn" id="micBtn">
+      <i class="fa-solid fa-microphone"></i>
+    </button>
+    <div class="mic-hint" id="micHint"></div>
+  </div>
+
+</div>
+
+<script>
+/* ── Dados injetados pelo Python ── */
+window.__pavFrames  = {{FRAMES_JSON}};
+window.__pavStrings = {{STRINGS_JSON}};
+window.__pavGoodPronunc = {{GOOD_PRONUNC}};
+
+var HISTORY  = {{HISTORY_JSON}};
+var TTS_B64  = {{TTS_B64_JSON}};
+var VM_ERROR = {{VM_ERROR_JSON}};
+var PROF_NAME = window.__pavStrings.profName || 'Teacher Tati';
+
+/* ── Configura nome ── */
+document.getElementById('profName').textContent = PROF_NAME;
+document.getElementById('micHint').textContent  = window.__pavStrings.tapSpeak;
+
+/* ── Renderiza bolhas do histórico ── */
+function addBubble(role, text, b64) {
+  var hw   = document.getElementById('historyWrap');
+  var lbl  = document.createElement('div');
+  lbl.className   = 'bubble-label' + (role === 'user' ? ' right' : '');
+  lbl.textContent = role === 'user' ? 'Você' : PROF_NAME;
+
+  var bub = document.createElement('div');
+  bub.className   = 'bubble ' + role;
+  bub.textContent = text;
+
+  hw.appendChild(lbl);
+  hw.appendChild(bub);
+
+  if (role === 'bot' && b64) {
+    var pbtn = document.createElement('button');
+    pbtn.className   = 'bubble-play-btn';
+    pbtn.textContent = '▶ Ouvir';
+    pbtn.addEventListener('click', function () {
+      if (window.__pavAudio?.isPlaying(b64)) {
+        window.__pavAudio.stop();
+        pbtn.textContent = '▶ Ouvir';
+        pbtn.classList.remove('playing');
+      } else {
+        document.querySelectorAll('.bubble-play-btn').forEach(function (b) {
+          b.textContent = '▶ Ouvir'; b.classList.remove('playing');
+        });
+        pbtn.textContent = '⏹ Parar';
+        pbtn.classList.add('playing');
+        window.__pavAudio?.play(b64, function () {
+          pbtn.textContent = '▶ Ouvir'; pbtn.classList.remove('playing');
+        });
+      }
+    });
+    hw.appendChild(pbtn);
+  }
+  hw.scrollTop = hw.scrollHeight;
+}
+
+/* ── Estado inicial ── */
+if (VM_ERROR) {
+  document.getElementById('errBox').textContent = VM_ERROR;
+  document.getElementById('errBox').style.display = 'block';
+} else {
+  (HISTORY || []).forEach(function (m) {
+    addBubble(m.role === 'user' ? 'user' : 'bot', m.content, m.tts_b64 || '');
+  });
+  if (TTS_B64) setTimeout(function () { window.__pavAudio?.play(TTS_B64); }, 300);
+}
+</script>
+
+<!-- Scripts separados: ordem importa (audio → avatar → mic) -->
+{{AUDIO_JS}}
+{{AVATAR_JS}}
+{{MIC_JS}}
+
+</body></html>
