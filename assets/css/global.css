@@ -77,6 +77,6 @@ div[data-testid="stButton"] > button {
 /* ── Container de página (history, settings, dashboard) ────────── */
 .pav-page { padding: 1.5rem 2rem; max-width: 820px; }
 
-_terminalButton_rix23_138{
+div[data-testid="manage-app-button"] > button{
   visibility: hidden;
 }
