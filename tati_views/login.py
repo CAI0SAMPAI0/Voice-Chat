@@ -46,21 +46,16 @@ def show_login(auth: AuthHelper) -> None:
 
     # ── Libera scroll na tela de login (global.css e voice.css travam overflow) ──
     st.markdown("""<style>
-html, body,
-.stApp,
-[data-testid="stAppViewContainer"],
-section[data-testid="stMain"],
-section[data-testid="stMain"] > div,
-.main .block-container {
-    overflow: auto !important;
-    overflow-x: hidden !important;
-    max-height: none !important;
-    height: auto !important;
-}
-div[data-testid="stVerticalBlock"] {
-    overflow: visible !important;
-    max-height: none !important;
-}
+html { overflow: auto !important; height: auto !important; }
+body { overflow-y: auto !important; overflow-x: hidden !important; min-height: 100vh !important; height: auto !important; }
+.stApp { overflow-y: auto !important; overflow-x: hidden !important; min-height: 100vh !important; height: auto !important; }
+[data-testid="stAppViewContainer"] { overflow: visible !important; min-height: 100vh !important; height: auto !important; }
+section[data-testid="stMain"] { overflow-y: auto !important; overflow-x: hidden !important; min-height: 100vh !important; height: auto !important; max-height: none !important; }
+section[data-testid="stMain"] > div { overflow: visible !important; height: auto !important; max-height: none !important; padding-bottom: 80px !important; }
+.main .block-container { overflow: visible !important; height: auto !important; max-height: none !important; padding-bottom: 80px !important; }
+div[data-testid="stVerticalBlock"],
+div[data-testid="stVerticalBlockBorderWrapper"],
+div[data-testid="element-container"] { overflow: visible !important; max-height: none !important; height: auto !important; }
 </style>""", unsafe_allow_html=True)
 
     # ── Card visual ───────────────────────────────────────────────────────────
