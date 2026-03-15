@@ -1,1 +1,4 @@
-COOKIE_SECRET=30e3e3aaa62b4debc44d3d438185fc5e08c5e5d64ce4933bc9c42d746b478a08
+
+[client]
+showSidebarNavigation = false
+toolbarMode = "minimal" 
