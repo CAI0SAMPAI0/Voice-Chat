@@ -133,7 +133,7 @@ def _render_page():
     elif page == "history":
         from tati_views.history import show_history
         show_history()
-    elif page == "dashboard" and st.session_state.user.get("role") == "professor":
+    elif page == "dashboard" and st.session_state.user.get("role") == "professor" or "programador":
         from tati_views.dashboard import show_dashboard
         show_dashboard()
     else:
