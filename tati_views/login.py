@@ -153,6 +153,9 @@ html,body{{background:#060a10;font-family:'Sora',sans-serif;width:100%;height:10
             re_ = st.text_input(t("email"),      placeholder="joao@email.com")
             ru  = st.text_input(t("username"),   placeholder="joao.silva")
             rp  = st.text_input("Senha", type="password", placeholder="mínimo 6 caracteres")
+            level_opts = ["Beginner","Pre-Intermediate","Intermediate","Advanced","Business English"]
+            level = st.selectbox("Nível de inglês", level_opts, index=0)
+            birth = st.date_input("Data de nascimento", format="DD/MM/YYYY")
             if st.form_submit_button(t("create_account"), use_container_width=True):
                 if not rn or not re_ or not ru or not rp:
                     st.session_state["_reg_err"] = "Preencha todos os campos."; st.rerun()
@@ -161,7 +164,11 @@ html,body{{background:#060a10;font-family:'Sora',sans-serif;width:100%;height:10
                 elif len(rp) < 6:
                     st.session_state["_reg_err"] = "Senha muito curta (mínimo 6)."; st.rerun()
                 else:
-                    ok, msg = register_student(ru, rn, rp, email=re_)
+                    birth_str = birth.isoformat() if birth else ""
+                    ok, msg = register_student(ru, rn, rp, email=re_, level=level, focus="General Conversation")
+                    if ok:
+                        from database import update_profile
+                        update_profile(ru, {"birthdate": birth_str})
                     if ok:
                         st.session_state["_reg_ok"]    = True
                         st.session_state["_reg_name"]  = rn

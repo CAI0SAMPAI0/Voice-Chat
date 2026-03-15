@@ -22,7 +22,10 @@ from ui_helpers import (
 )
 from guards.page_guard import page_guard
 
-import google.generativeai as genai
+try:
+    import google.generativeai as genai  # type: ignore
+except Exception:  # biblioteca ausente no ambiente (ex.: Streamlit Cloud)
+    genai = None
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL   = "gemini-2.0-flash"
@@ -75,18 +78,30 @@ def process_voice(raw: bytes, conv_id: str) -> None:
 
     st.session_state["_vm_user_said"] = txt
 
-    if not GEMINI_API_KEY:
+    if not GEMINI_API_KEY or genai is None:
         st.session_state["_vm_error"] = t("error_api", lang)
         return
 
     # ── Histórico existente → formato Gemini ──────────────────────────────────
     history = st.session_state.get("_vm_history", [])
 
+    birthdate = profile.get("birthdate", "")
+    age_hint = ""
+    if birthdate:
+        try:
+            from datetime import datetime, date
+            bd = datetime.fromisoformat(birthdate).date()
+            today = date.today()
+            age = today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
+            age_hint = f" | Age: about {age} years old"
+        except Exception:
+            age_hint = ""
+
     context = (
         f"\n\nStudent profile -- Name: {user.get('name','')} | "
         f"Level: {user.get('level','Beginner')} | "
-        f"Focus: {user.get('focus','General Conversation')} | "
-        f"Native language: Brazilian Portuguese."
+        f"Focus/topics: {user.get('focus','General Conversation')} | "
+        f"Native language: Brazilian Portuguese{age_hint}."
     )
 
     # Gemini usa "model" em vez de "assistant", e "parts" em vez de "content"
