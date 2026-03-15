@@ -24,14 +24,14 @@ from guards.page_guard import page_guard
 
 try:
     import google.generativeai as genai  # type: ignore
-except Exception:  # biblioteca ausente no ambiente (ex.: Streamlit Cloud)
+except Exception:
     genai = None
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL   = "gemini-2.0-flash"
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# ← REMOVIDO: genai.configure() do nível do módulo
+# Era chamado mesmo quando genai=None, causando AttributeError na importação.
 
 SYSTEM_PROMPT = f"""You are a digital avatar of an English teacher called {PROF_NAME} -- warm, witty, very intelligent and encouraging. You help adults speak English with more confidence, over 25 years of experience, Advanced English Hunter College NY, and passionate about teaching.
 
@@ -82,6 +82,13 @@ def process_voice(raw: bytes, conv_id: str) -> None:
         st.session_state["_vm_error"] = t("error_api", lang)
         return
 
+    # ── Configura Gemini (apenas quando necessário, com chave válida) ─────────
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        st.session_state["_vm_error"] = f"Erro ao configurar IA: {e}"
+        return
+
     # ── Histórico existente → formato Gemini ──────────────────────────────────
     history = st.session_state.get("_vm_history", [])
 
@@ -104,7 +111,6 @@ def process_voice(raw: bytes, conv_id: str) -> None:
         f"Native language: Brazilian Portuguese{age_hint}."
     )
 
-    # Gemini usa "model" em vez de "assistant", e "parts" em vez de "content"
     gemini_history = [
         {
             "role":  "model" if m["role"] == "assistant" else "user",
@@ -151,7 +157,6 @@ def process_voice(raw: bytes, conv_id: str) -> None:
     )
 
     # ── Atualiza histórico em memória ─────────────────────────────────────────
-    # Ordem: transcrição → IA → TTS → histórico + estado
     history.append({"role": "user",      "content": txt,   "tts_b64": ""})
     history.append({"role": "assistant", "content": reply, "tts_b64": tts_b64})
     st.session_state["_vm_history"] = history

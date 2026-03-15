@@ -45,40 +45,70 @@ def show_login(auth: AuthHelper) -> None:
     inject_css("login")
 
     # ── Card visual ───────────────────────────────────────────────────────────
+    # A foto é renderizada como background de um div circular (não como <img>)
+    # para garantir que o círculo funcione corretamente em todos os navegadores.
     if photo_src:
-        av_html = (
-            f'<img class="av" src="{photo_src}" alt="{PROF_NAME}" '
-            f'onerror="this.style.display=\'none\';document.getElementById(\'avE\').style.display=\'flex\';">'
-            f'<div class="av-emoji" id="avE" style="display:none">&#129489;&#8203;&#127979;</div>'
-        )
+        av_html = f"""
+<div style="
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background-image: url('{photo_src}');
+    background-size: cover;
+    background-position: top center;
+    border: 2.5px solid #8b5cf6;
+    box-shadow: 0 0 0 6px rgba(139,92,246,0.12), 0 0 28px rgba(139,92,246,0.25);
+    margin-bottom: 12px;
+    flex-shrink: 0;
+"></div>"""
     else:
-        av_html = '<div class="av-emoji">&#129489;&#8203;&#127979;</div>'
+        av_html = """
+<div style="
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6c3fc5, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 38px;
+    margin-bottom: 12px;
+">&#129489;&#8203;&#127979;</div>"""
 
     components.html(f"""<!DOCTYPE html><html><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1.0,user-scalable=no">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&display=swap');
 *{{box-sizing:border-box;margin:0;padding:0;}}
-html,body{{background:#060a10;font-family:'Sora',sans-serif;width:100%;height:100%;
-    overflow:hidden;display:flex;align-items:center;justify-content:center;}}
-.login-card{{background:linear-gradient(180deg,#0f1824,#0a1020);border:1px solid #1a2535;
-    border-radius:24px;padding:28px 24px 20px;width:100%;
-    box-shadow:0 24px 64px rgba(0,0,0,.7);display:flex;flex-direction:column;align-items:center;}}
-.login-avatar{{width:90px;height:90px;border-radius:50%;object-fit:cover;object-position:top center;
-    border:2.5px solid #8b5cf6;
-    box-shadow:0 0 0 6px rgba(139,92,246,.12),0 0 28px rgba(139,92,246,.25);
-    display:block;margin-bottom:12px;}}
-.login-avatar-emoji{{width:90px;height:90px;border-radius:50%;
-    background:linear-gradient(135deg,#6c3fc5,#8b5cf6);
-    display:flex;align-items:center;justify-content:center;font-size:38px;margin-bottom:12px;}}
-.login-title{{font-size:1.35rem;font-weight:800;text-align:center;margin:0 0 3px;
+html,body{{
+    background:#060a10;
+    font-family:'Sora',sans-serif;
+    width:100%;height:100%;
+    overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+}}
+.login-card{{
+    background:linear-gradient(180deg,#0f1824,#0a1020);
+    border:1px solid #1a2535;
+    border-radius:24px;
+    padding:28px 24px 20px;
+    width:100%;
+    box-shadow:0 24px 64px rgba(0,0,0,.7);
+    display:flex;flex-direction:column;align-items:center;
+}}
+.login-title{{
+    font-size:1.35rem;font-weight:800;text-align:center;margin:0 0 3px;
     background:linear-gradient(135deg,#8b5cf6 30%,#c084fc 100%);
-    -webkit-background-clip:text;-webkit-text-fill-color:transparent;}}
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}}
 .login-subtitle{{font-size:.7rem;color:#3a4e5e;text-align:center;}}
 </style></head><body>
-<div class="login-card">{av_html}<h2 class="login-title">{PROF_NAME}</h2><p class="login-subtitle">Voice English Coach</p></div>
+<div class="login-card">
+    {av_html}
+    <h2 class="login-title">{PROF_NAME}</h2>
+    <p class="login-subtitle">Voice English Coach</p>
+</div>
 </body></html>""", height=220, scrolling=False)
 
     # ── Feedback ──────────────────────────────────────────────────────────────
