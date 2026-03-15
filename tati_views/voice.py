@@ -88,7 +88,7 @@ def process_voice(raw: bytes, conv_id: str) -> None:
         f"Native language: Brazilian Portuguese."
     )
 
-    history.append({"role": "user", "content": txt})
+    history.append({"role": "assistant", "content": reply, "tts_b64": tts_b64})
     client = anthropic.Anthropic(api_key=API_KEY)
     # Remove chaves extras (ex: tts_b64) — a API da Anthropic só aceita role + content
     api_messages = [

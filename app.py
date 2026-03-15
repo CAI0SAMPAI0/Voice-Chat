@@ -1,5 +1,5 @@
 """
-app.py — Teacher Tati · Entry point
+app.py — Teacher Tati
 """
 
 import os
@@ -12,7 +12,6 @@ from database import init_db, validate_session, load_students
 from ui_helpers import init_session, inject_global_css, show_sidebar, js_save_session
 from guards.auth_helper import get_auth
 
-# ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Tati's Voice English Class",
     page_icon="🎙️",
@@ -20,7 +19,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Assets globais ────────────────────────────────────────────────────────────
 st.markdown(
     '<link rel="stylesheet" '
     'href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">',
@@ -40,35 +38,32 @@ body { min-height: 100dvh; background: #060a10 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Init ──────────────────────────────────────────────────────────────────────
 init_db()
 init_session()
 inject_global_css()
 
-# ── Instância única do AuthHelper (CookieController) ─────────────────────────
 auth = get_auth()
 
 
-# =============================================================================
-# ROUTER
-# =============================================================================
 def main():
 
-    # ── Já logado nesta sessão — vai direto ───────────────────────────────────
+    # ── Já logado nesta sessão ────────────────────────────────────────────────
     if st.session_state.logged_in:
         _render_page()
         return
 
-    # ── Tenta auto-login via cookie ───────────────────────────────────────────
-    # O CookieController precisa de um ciclo de renderização para carregar.
-    # Usamos uma flag para saber se já esperamos esse ciclo.
+    # ── Aguarda CookieController carregar (precisa de 1 rerun) ────────────────
     if not st.session_state.get("_cookie_checked"):
-        # Primeiro rerun: marca que já vamos checar, espera o componente carregar
         st.session_state["_cookie_checked"] = True
+        # Mostra tela preta enquanto verifica — sem flash de login
+        st.markdown(
+            "<div style='position:fixed;inset:0;background:#060a10;z-index:9999;'></div>",
+            unsafe_allow_html=True,
+        )
         st.rerun()
         return
 
-    # Segundo rerun: agora o CookieController já carregou, podemos ler
+    # ── Tenta cookie ──────────────────────────────────────────────────────────
     token = auth.get_token()
     if token:
         user_data = validate_session(token)
@@ -81,15 +76,14 @@ def main():
             if username:
                 st.session_state.logged_in         = True
                 st.session_state.user              = {"username": username, **user_data}
-                st.session_state.page              = "dashboard" if user_data["role"] == "professor" else "voice"
+                st.session_state.page              = "dashboard" if user_data["role"] in ("professor", "programador") else "voice"
                 st.session_state.conv_id           = None
                 st.session_state["_session_token"] = token
                 st.rerun()
                 return
-        # Token inválido — limpa e mostra login
         auth.clear()
 
-    # ── Fallback: query param ?s=token ────────────────────────────────────────
+    # ── Fallback query param ──────────────────────────────────────────────────
     _s = st.query_params.get("s", "")
     if _s and len(_s) > 10:
         user_data = validate_session(_s)
@@ -102,7 +96,7 @@ def main():
             if username:
                 st.session_state.logged_in         = True
                 st.session_state.user              = {"username": username, **user_data}
-                st.session_state.page              = "dashboard" if user_data["role"] == "professor" else "voice"
+                st.session_state.page              = "dashboard" if user_data["role"] in ("professor", "programador") else "voice"
                 st.session_state.conv_id           = None
                 st.session_state["_session_token"] = _s
                 auth.save(_s)
@@ -110,7 +104,7 @@ def main():
                 return
         st.query_params.pop("s", None)
 
-    # ── Nenhum auto-login — mostra tela de login ──────────────────────────────
+    # ── Mostra login ──────────────────────────────────────────────────────────
     from tati_views.login import show_login
     show_login(auth)
 
@@ -124,6 +118,8 @@ def _render_page():
     show_sidebar()
 
     page = st.session_state.page
+    role = st.session_state.user.get("role", "")
+
     if page == "voice":
         from tati_views.voice import show_voice
         show_voice()
@@ -133,7 +129,7 @@ def _render_page():
     elif page == "history":
         from tati_views.history import show_history
         show_history()
-    elif page == "dashboard" and st.session_state.user.get("role") == "professor" or "programador":
+    elif page == "dashboard" and role in ("professor", "programador"):
         from tati_views.dashboard import show_dashboard
         show_dashboard()
     else:

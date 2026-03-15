@@ -88,3 +88,16 @@ button[kind="managedDeployButton"] {
     width: 0 !important;
     height: 0 !important;
 }
+
+/* Remove flash/transição ao trocar páginas */
+iframe {
+    transition: none !important;
+    animation: none !important;
+}
+
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+section[data-testid="stMain"] > div {
+    transition: none !important;
+    animation: none !important;
+}
