@@ -141,9 +141,10 @@ def t(key: str, lang: str = "pt-BR") -> str:
 
 
 # =============================================================================
-# FOTO / AVATAR
+# FOTO / AVATAR (com cache)
 # =============================================================================
 
+@st.cache_data(ttl=300)
 def get_photo_b64() -> str | None:
     p = Path(PHOTO_PATH)
     if p.exists():
@@ -152,6 +153,7 @@ def get_photo_b64() -> str | None:
         return f"data:image/{mime};base64,{base64.b64encode(p.read_bytes()).decode()}"
     return None
 
+@st.cache_data(ttl=300)
 def get_tati_mini_b64() -> str:
     for _p in [Path("assets/tati.png"), Path("assets/tati.jpg")]:
         if _p.exists():
@@ -160,6 +162,7 @@ def get_tati_mini_b64() -> str:
             return f"data:image/{_mime};base64,{base64.b64encode(_p.read_bytes()).decode()}"
     return get_photo_b64() or ""
 
+@st.cache_data(ttl=300)
 def get_avatar_frames() -> dict:
     _cwd = Path(os.getcwd()).resolve()
     def _load(filename: str) -> str:
@@ -178,6 +181,7 @@ def get_avatar_frames() -> dict:
         "surpresa":   _load("tati_surpresa.png"),
     }
 
+@st.cache_data(ttl=60)
 def _get_avatar(username: str) -> str | None:
     result = get_user_avatar_db(username)
     if not result:
@@ -316,6 +320,7 @@ def _logout():
     for k, v in SESSION_DEFAULTS.items():
         st.session_state[k] = v
     st.session_state.pop("_session_saved", None)
+    st.session_state.pop("_cookie_checked", None)
 
 
 def js_save_session(token: str) -> None:
@@ -368,8 +373,9 @@ def show_sidebar() -> None:
             ("settings", f"⚙️ {t('settings',   lang)}"),
             ("history",  f"📄 {t('history',    lang)}"),
         ]
-        if user.get("role") == "professor":
+        if user.get("role") in ("professor", "programador"):
             nav_items.append(("dashboard", f"📊 {t('dashboard', lang)}"))
+
 
         for pg, label in nav_items:
             active = page == pg

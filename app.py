@@ -25,7 +25,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown("""
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
@@ -35,10 +35,12 @@ body { min-height: 100dvh; background: #060a10 !important; }
 @supports(padding: max(0px)) {
     .mic-footer { padding-bottom: max(20px, env(safe-area-inset-bottom)) !important; }
 }
-</style>
+        </style>
 """, unsafe_allow_html=True)
 
-init_db()
+if not st.session_state.get("_db_initialized"):
+    init_db()
+    st.session_state["_db_initialized"] = True
 init_session()
 inject_global_css()
 

@@ -22,7 +22,12 @@
 
   function startRecording() {
     var realBtn = getRealMicBtn();
-    if (!realBtn) return;
+    if (!realBtn) {
+      if (micHint) {
+        micHint.textContent = 'Permita o acesso ao microfone nas configurações do navegador.';
+      }
+      return;
+    }
 
     /* Para qualquer áudio em andamento */
     window.__pavAudio?.stop();
@@ -40,7 +45,12 @@
 
   function stopRecording() {
     var realBtn = getRealMicBtn();
-    if (!realBtn) return;
+    if (!realBtn) {
+      if (micHint) {
+        micHint.textContent = 'Permita o acesso ao microfone nas configurações do navegador.';
+      }
+      return;
+    }
 
     recording = false;
     micBtn.classList.remove('recording');

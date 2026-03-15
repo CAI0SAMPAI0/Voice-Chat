@@ -20,6 +20,7 @@ from ui_helpers import (
     get_or_create_conv,
     t,
 )
+from guards.page_guard import page_guard
 
 import google.generativeai as genai
 
@@ -151,6 +152,7 @@ def process_voice(raw: bytes, conv_id: str) -> None:
 # =============================================================================
 # TELA PRINCIPAL
 # =============================================================================
+@page_guard
 def show_voice() -> None:
     user     = st.session_state.user
     username = user["username"]
@@ -203,6 +205,24 @@ html,body{overflow:hidden!important;}
             process_voice(audio_val.read(), conv_id)
         st.session_state.audio_key += 1
         st.rerun()
+
+    # ── Botão "Carregar mais" (lazy loading) ──────────────────────────────────
+    history_state = st.session_state.get("_vm_history") or []
+    if conv_id and history_state and len(history_state) >= 30:
+        if st.button("⬆️ Carregar mais mensagens", key="vm_load_more"):
+            new_limit = len(history_state) + 30
+            msgs_db = load_conversation(username, conv_id, limit=new_limit)
+            if msgs_db:
+                st.session_state["_vm_history"] = [
+                    {
+                        "role":    m.get("role", "user"),
+                        "content": m.get("content", ""),
+                        "tts_b64": m.get("tts_b64", ""),
+                    }
+                    for m in msgs_db
+                    if m.get("content") and m.get("role") in ("user", "assistant")
+                ]
+            st.rerun()
 
     # ── Estado atual ──────────────────────────────────────────────────────────
     reply    = st.session_state.get("_vm_reply",   "")
@@ -424,7 +444,25 @@ document.getElementById('spd-slider').addEventListener('input',function(){{
 }});
 
 /* ── Bolhas ── */
-function addBubble(role,text,b64){{
+    var typingEl = null;
+
+    function clearTyping() {{
+        if (typingEl && typingEl.parentNode) {{
+            typingEl.parentNode.removeChild(typingEl);
+        }}
+        typingEl = null;
+    }}
+
+    function showTyping() {{
+        clearTyping();
+        typingEl = document.createElement('div');
+        typingEl.className = 'bubble bot typing';
+        typingEl.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+        histWrap.appendChild(typingEl);
+        histWrap.scrollTo({{ top: histWrap.scrollHeight, behavior: 'smooth' }});
+    }}
+
+    function addBubble(role,text,b64){{
     var lbl=document.createElement('div');
     lbl.className='bubble-label'+(role==='user'?' right':'');
     lbl.textContent=role==='user'?'Você':PROF_NAME;
@@ -447,7 +485,7 @@ function addBubble(role,text,b64){{
         }});
         histWrap.appendChild(pbtn);
     }}
-    histWrap.scrollTop=histWrap.scrollHeight;
+    histWrap.scrollTo({{ top: histWrap.scrollHeight, behavior: 'smooth' }});
 }}
 
 /* ── Renderiza ── */
