@@ -19,8 +19,8 @@ new_conversation,
 list_conversations,
 append_message,
 )
-from transcriber import transcribe_bytes
-from tts import text_to_speech, tts_available
+from audio_services import transcribe_bytes
+from audio_services import text_to_speech, tts_available
 from ui_helpers import (
 PROF_NAME,
 get_photo_b64,
