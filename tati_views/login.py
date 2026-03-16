@@ -237,7 +237,12 @@ html,body{{
             rp  = st.text_input("Senha", type="password", placeholder="mínimo 6 caracteres")
             level_opts = ["Beginner","Pre-Intermediate","Intermediate","Advanced","Business English"]
             level = st.selectbox("Nível de inglês", level_opts, index=0)
-            birth = st.date_input("Data de nascimento", format="DD/MM/YYYY")
+            birth = st.date_input(
+                "Data de nascimento",
+                format="DD/MM/YYYY",
+                min_value=datetime(1950, 1, 1),
+                max_value=datetime.today()
+            )
             if st.form_submit_button(t("create_account"), use_container_width=True):
                 if not rn or not re_ or not ru or not rp:
                     st.session_state["_reg_err"] = "Preencha todos os campos."; st.rerun()

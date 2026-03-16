@@ -125,16 +125,23 @@ def process_voice(raw: bytes, conv_id: str) -> None:
         model = genai.GenerativeModel(
             model_name=GEMINI_MODEL,
             system_instruction=SYSTEM_PROMPT + context,
-            generation_config=genai.GenerationConfig(
-                max_output_tokens=400,
-                temperature=0.85,
-            ),
+            generation_config={
+                "max_output_tokens": 400,
+                "temperature": 0.85
+            }
         )
+
         chat_session = model.start_chat(history=gemini_history)
-        response     = chat_session.send_message(txt)
-        reply        = response.text
+        response = chat_session.send_message(txt)
+
+        reply = ""
+        if hasattr(response, "text") and response.text:
+            reply = response.text
+        else:
+            reply = response.candidates[0].content.parts[0].text
+
     except Exception as e:
-        st.session_state["_vm_error"] = f"Erro na IA: {e}"
+        st.session_state["_vm_error"] = f"Error calling AI: {str(e)}"
         return
 
     # ── TTS ───────────────────────────────────────────────────────────────────
