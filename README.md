@@ -52,9 +52,3 @@ chatbot_tati_voice/
 - **Programador** (aluno Advanced) — criado via tela de registro
 - **Professor** — role `professor`, criado direto no banco ou via `database.py`
 
-Para criar a conta do professor via Python:
-```python
-from database import register_student
-register_student("tatiana", "Teacher Tati", "senha123",
-                  email="tati@escola.com", role="professor")
-```
