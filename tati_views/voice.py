@@ -1,9 +1,5 @@
 """
 pages/voice.py — Tela principal de modo voz.
-Melhorias:
- - Histórico renderiza botão ▶ por bolha (com tts_b64 salvo no banco)
- - Menos reruns: só rerun após processar áudio
- - Avatar animado isolado
 """
 
 import base64
@@ -14,19 +10,20 @@ import streamlit.components.v1 as components
 import anthropic
 
 from database import (
-load_conversation,
-new_conversation,
-list_conversations,
-append_message,
+    load_conversation,
+    new_conversation,
+    list_conversations,
+    append_message,
 )
-from audio_services import transcribe_bytes, text_to_speech, tts_available
+from audio_services import transcribe_bytes
+from audio_services import text_to_speech, tts_available
 from ui_helpers import (
-PROF_NAME,
-get_photo_b64,
-get_tati_mini_b64,
-get_avatar_frames,
-get_or_create_conv,
-t,
+    PROF_NAME,
+    get_photo_b64,
+    get_tati_mini_b64,
+    get_avatar_frames,
+    get_or_create_conv,
+    t,
 )
 
 import os
@@ -64,153 +61,152 @@ TEACHING STYLE:
 # PROCESSAR ÁUDIO → CLAUDE → TTS
 # =============================================================================
 def process_voice(raw: bytes, conv_id: str) -> None:
-user     = st.session_state.user
-username = user["username"]
-profile  = user.get("profile", {})
-lang     = profile.get("language", "pt-BR")
+    user     = st.session_state.user
+    username = user["username"]
+    profile  = user.get("profile", {})
+    lang     = profile.get("language", "pt-BR")
 
-txt = transcribe_bytes(raw, suffix=".webm", language=None)
-if not txt or txt.startswith("❌") or txt.startswith("⚠️"):
-st.session_state["_vm_error"] = txt or t("error_mic", lang)
-return
+    txt = transcribe_bytes(raw, suffix=".webm", language=None)
+    if not txt or txt.startswith("❌") or txt.startswith("⚠️"):
+        st.session_state["_vm_error"] = txt or t("error_mic", lang)
+        return
 
-st.session_state["_vm_user_said"] = txt
-if not API_KEY:
-st.session_state["_vm_error"] = t("error_api", lang)
-return
+    st.session_state["_vm_user_said"] = txt
+    if not API_KEY:
+        st.session_state["_vm_error"] = t("error_api", lang)
+        return
 
-history = st.session_state.get("_vm_history", [])
-context = (
-f"\n\nStudent profile -- Name: {user.get('name','')} | "
-f"Level: {user.get('level','Beginner')} | "
-f"Focus: {user.get('focus','General Conversation')} | "
-f"Native language: Brazilian Portuguese."
-)
+    history = st.session_state.get("_vm_history", [])
+    context = (
+        f"\n\nStudent profile -- Name: {user.get('name','')} | "
+        f"Level: {user.get('level','Beginner')} | "
+        f"Focus: {user.get('focus','General Conversation')} | "
+        f"Native language: Brazilian Portuguese."
+    )
 
-history.append({"role": "user", "content": txt})
-client = anthropic.Anthropic(api_key=API_KEY)
-# Remove chaves extras (ex: tts_b64) — a API da Anthropic só aceita role + content
-api_messages = [
-{"role": m["role"], "content": m["content"]}
-for m in history
-if m.get("role") in ("user", "assistant") and m.get("content")
-]
-resp   = client.messages.create(
-model="claude-haiku-4-5", max_tokens=400,
-system=SYSTEM_PROMPT + context,
-messages=api_messages,
-)
-reply = resp.content[0].text
-history.append({"role": "assistant", "content": reply})
-st.session_state["_vm_history"] = history
+    history.append({"role": "user", "content": txt})
+    client = anthropic.Anthropic(api_key=API_KEY)
+    # Remove chaves extras (ex: tts_b64) — a API da Anthropic só aceita role + content
+    api_messages = [
+        {"role": m["role"], "content": m["content"]}
+        for m in history
+        if m.get("role") in ("user", "assistant") and m.get("content")
+    ]
+    resp = client.messages.create(
+        model="claude-haiku-4-5", max_tokens=400,
+        system=SYSTEM_PROMPT + context,
+        messages=api_messages,
+    )
+    reply = resp.content[0].text
+    history.append({"role": "assistant", "content": reply})
+    st.session_state["_vm_history"] = history
 
-# Detecta elogio de pronúncia para animação de aprovação
-_praise_en = ["great pronunciation","excellent pronunciation","perfect pronunciation",
-"well pronounced","great accent","excellent accent","sounded great",
-"sounded perfect","very clear","beautifully said","well said",
-"that was perfect","spot on","nailed it"]
-_praise_pt = ["ótima pronúncia","excelente pronúncia","pronúncia perfeita",
-"pronunciou muito bem","sotaque ótimo","muito claro","ficou perfeito",
-"perfeito","mandou bem","muito bem pronunciado"]
-_reply_low = reply.lower()
-st.session_state["_vm_good_pronunciation"] = any(
-p in _reply_low for p in _praise_en + _praise_pt
-)
+    # Detecta elogio de pronúncia para animação de aprovação
+    _praise_en = ["great pronunciation","excellent pronunciation","perfect pronunciation",
+                  "well pronounced","great accent","excellent accent","sounded great",
+                  "sounded perfect","very clear","beautifully said","well said",
+                  "that was perfect","spot on","nailed it"]
+    _praise_pt = ["ótima pronúncia","excelente pronúncia","pronúncia perfeita",
+                  "pronunciou muito bem","sotaque ótimo","muito claro","ficou perfeito",
+                  "perfeito","mandou bem","muito bem pronunciado"]
+    _reply_low = reply.lower()
+    st.session_state["_vm_good_pronunciation"] = any(
+        p in _reply_low for p in _praise_en + _praise_pt
+    )
 
-tts_b64 = ""
-if tts_available():
-ab = text_to_speech(reply)
-if ab:
-tts_b64 = base64.b64encode(ab).decode()
+    tts_b64 = ""
+    if tts_available():
+        ab = text_to_speech(reply)
+        if ab:
+            tts_b64 = base64.b64encode(ab).decode()
 
-st.session_state["_vm_reply"]   = reply
-st.session_state["_vm_tts_b64"] = tts_b64
+    st.session_state["_vm_reply"]   = reply
+    st.session_state["_vm_tts_b64"] = tts_b64
 
-# Salva no banco — inclui tts_b64 para poder tocar depois no histórico
-append_message(username, conv_id, "user",      txt,   audio=True)
-append_message(username, conv_id, "assistant", reply, tts_b64=tts_b64 or None)
+    # Salva no banco — inclui tts_b64 para poder tocar depois no histórico
+    append_message(username, conv_id, "user",      txt,   audio=True)
+    append_message(username, conv_id, "assistant", reply, tts_b64=tts_b64 or None)
 
 
 # =============================================================================
 # TELA PRINCIPAL
 # =============================================================================
 def show_voice() -> None:
-user     = st.session_state.user
-username = user["username"]
-profile  = user.get("profile", {})
-lang     = profile.get("language", "pt-BR")
+    user     = st.session_state.user
+    username = user["username"]
+    profile  = user.get("profile", {})
+    lang     = profile.get("language", "pt-BR")
 
-ring_color        = profile.get("ring_color",        "#f0a500")
-user_bubble_color = profile.get("user_bubble_color", "#2d6a4f")
-bot_bubble_color  = profile.get("bot_bubble_color",  "#1a1f2e")
+    ring_color        = profile.get("ring_color",        "#f0a500")
+    user_bubble_color = profile.get("user_bubble_color", "#2d6a4f")
+    bot_bubble_color  = profile.get("bot_bubble_color",  "#1a1f2e")
 
-def _rgba(h: str, a: float) -> str:
-h = h.lstrip("#")
-if len(h) == 3: h = h[0]*2+h[1]*2+h[2]*2
-r, g, b = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
-return f"rgba({r},{g},{b},{a})"
+    def _rgba(h: str, a: float) -> str:
+        h = h.lstrip("#")
+        if len(h) == 3:
+            h = h[0]*2 + h[1]*2 + h[2]*2
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return f"rgba({r},{g},{b},{a})"
 
-# Sem scroll no modo voz
-st.markdown("""<style>
+    # Sem scroll no modo voz
+    st.markdown("""<style>
 body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"]{background:#060a10!important;}
 section[data-testid="stMain"]>div,.main .block-container{padding:0!important;margin:0!important;overflow:hidden!important;max-height:100vh!important;}
 div[data-testid="stVerticalBlock"],div[data-testid="stVerticalBlockBorderWrapper"],div[data-testid="element-container"]{gap:0!important;padding:0!important;margin:0!important;}
 html,body{overflow:hidden!important;}
 </style>""", unsafe_allow_html=True)
 
-conv_id = get_or_create_conv(username)
+    conv_id = get_or_create_conv(username)
 
-# Carrega histórico do banco se _vm_history estiver vazio
-if not st.session_state.get("_vm_history") and conv_id:
-msgs_db = load_conversation(username, conv_id)
-if msgs_db:
-st.session_state["_vm_history"] = [
-{
-"role":    m.get("role", "user"),
-"content": m.get("content", ""),
-"tts_b64": m.get("tts_b64", ""),
-}
-for m in msgs_db
-if m.get("content") and m.get("role") in ("user", "assistant")
-]
+    # Carrega histórico do banco se _vm_history estiver vazio
+    if not st.session_state.get("_vm_history") and conv_id:
+        msgs_db = load_conversation(username, conv_id)
+        if msgs_db:
+            st.session_state["_vm_history"] = [
+                {
+                    "role":    m.get("role", "user"),
+                    "content": m.get("content", ""),
+                    "tts_b64": m.get("tts_b64", ""),
+                }
+                for m in msgs_db
+                if m.get("content") and m.get("role") in ("user", "assistant")
+            ]
 
-# Processa áudio recebido — só 1 rerun após processar
-audio_val = st.audio_input(
-" ", key=f"voice_input_{st.session_state.audio_key}",
-label_visibility="collapsed",
-)
-if audio_val and audio_val != st.session_state.get("_vm_last_upload"):
-st.session_state["_vm_last_upload"] = audio_val
-for k in ["_vm_reply", "_vm_tts_b64", "_vm_user_said", "_vm_error"]:
-st.session_state.pop(k, None)
-        
-        process_voice(audio_val.read(), conv_id)
-        with st.spinner(t("processing", lang)):
-            process_voice(audio_val.read(), conv_id)
-st.session_state.audio_key += 1
-st.rerun()
+    # Processa áudio recebido — FIX: lê bytes UMA vez, chama process_voice UMA vez
+    audio_val = st.audio_input(
+        " ", key=f"voice_input_{st.session_state.audio_key}",
+        label_visibility="collapsed",
+    )
+    if audio_val and audio_val != st.session_state.get("_vm_last_upload"):
+        st.session_state["_vm_last_upload"] = audio_val
+        for k in ["_vm_reply", "_vm_tts_b64", "_vm_user_said", "_vm_error"]:
+            st.session_state.pop(k, None)
 
-# Estado atual
-reply   = st.session_state.get("_vm_reply",   "")
-tts_b64 = st.session_state.get("_vm_tts_b64", "")
-vm_error = st.session_state.get("_vm_error",  "")
-history  = st.session_state.get("_vm_history", [])
+        audio_bytes = audio_val.read()  # lê os bytes UMA única vez
+        process_voice(audio_bytes, conv_id)
+        st.session_state.audio_key += 1
+        st.rerun()
 
-# Frames do avatar
-frames    = get_avatar_frames()
-has_anim  = bool(frames.get("normal"))
+    # Estado atual
+    reply    = st.session_state.get("_vm_reply",   "")
+    tts_b64  = st.session_state.get("_vm_tts_b64", "")
+    vm_error = st.session_state.get("_vm_error",   "")
+    history  = st.session_state.get("_vm_history",  [])
 
-# Serializa dados para JS
-history_js  = json.dumps(history)
-tts_js      = json.dumps(tts_b64)
-reply_js    = json.dumps(reply)
-err_js      = json.dumps(vm_error)
-tap_speak   = json.dumps(t("tap_to_speak", lang))
-tap_stop    = json.dumps(t("tap_to_stop",  lang))
-speaking_   = json.dumps(t("speaking_ai",  lang))
-proc_       = json.dumps(t("processing",   lang))
+    # Frames do avatar
+    frames   = get_avatar_frames()
+    has_anim = bool(frames.get("normal"))
 
-    # NOVAS TRADUÇÕES PARA A INTERFACE JS
+    # Serializa dados para JS
+    history_js = json.dumps(history)
+    tts_js     = json.dumps(tts_b64)
+    reply_js   = json.dumps(reply)
+    err_js     = json.dumps(vm_error)
+    tap_speak  = json.dumps(t("tap_to_speak", lang))
+    tap_stop   = json.dumps(t("tap_to_stop",  lang))
+    speaking_  = json.dumps(t("speaking_ai",  lang))
+    proc_      = json.dumps(t("processing",   lang))
+
     t_online_js = json.dumps(f"● {t('online', lang, 'Online')}")
     t_listen_js = json.dumps(f"🎙 {t('listening', lang, 'Ouvindo')}…")
     t_proc_js   = json.dumps(f"⏳ {t('processing', lang, 'Processando')}…")
@@ -218,23 +214,23 @@ proc_       = json.dumps(t("processing",   lang))
     t_stop_js   = json.dumps(f"⏹ {t('pause', lang, 'Parar')}")
     t_you_js    = json.dumps(t("you", lang, 'Você'))
 
-av_normal_js     = json.dumps(frames.get("normal",     ""))
-av_meio_js       = json.dumps(frames.get("meio",       ""))
-av_aberta_js     = json.dumps(frames.get("aberta",     ""))
-av_bem_aberta_js = json.dumps(frames.get("bem_aberta", ""))
-av_ouvindo_js    = json.dumps(frames.get("ouvindo",    ""))
-av_piscando_js   = json.dumps(frames.get("piscando",   ""))
-av_surpresa_js   = json.dumps(frames.get("surpresa",   ""))
-has_anim_js      = "true" if has_anim else "false"
-photo_js         = json.dumps(get_tati_mini_b64() or get_photo_b64())
-prof_name_js     = json.dumps(PROF_NAME)
+    av_normal_js     = json.dumps(frames.get("normal",     ""))
+    av_meio_js       = json.dumps(frames.get("meio",       ""))
+    av_aberta_js     = json.dumps(frames.get("aberta",     ""))
+    av_bem_aberta_js = json.dumps(frames.get("bem_aberta", ""))
+    av_ouvindo_js    = json.dumps(frames.get("ouvindo",    ""))
+    av_piscando_js   = json.dumps(frames.get("piscando",   ""))
+    av_surpresa_js   = json.dumps(frames.get("surpresa",   ""))
+    has_anim_js      = "true" if has_anim else "false"
+    photo_js         = json.dumps(get_tati_mini_b64() or get_photo_b64())
+    prof_name_js     = json.dumps(PROF_NAME)
 
-good_pronunc_js = json.dumps(bool(
-st.session_state.get("_vm_good_pronunciation", False)
-))
-st.session_state.pop("_vm_good_pronunciation", None)
+    good_pronunc_js = json.dumps(bool(
+        st.session_state.get("_vm_good_pronunciation", False)
+    ))
+    st.session_state.pop("_vm_good_pronunciation", None)
 
-components.html(f"""<!DOCTYPE html>
+    components.html(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>
@@ -243,7 +239,6 @@ components.html(f"""<!DOCTYPE html>
 html,body{{
    background:#060a10;font-family:'Sora',sans-serif;
    height:100%;overflow:hidden;
-   /* iOS safe area */
    padding-bottom:env(safe-area-inset-bottom);
 }}
 .app{{
@@ -262,7 +257,6 @@ html,body{{
    position:sticky;top:0;z-index:10;
    background:linear-gradient(180deg,#060a10 85%,transparent 100%);
 }}
-/* Avatar menor em telas pequenas */
 .avatar-wrap{{position:relative;width:200px;height:200px;flex-shrink:0;}}
 @media(max-height:700px){{
    .avatar-wrap{{width:130px;height:130px;}}
@@ -332,7 +326,6 @@ html,body{{
    background:transparent;border:1px solid #1a2535;color:#3a6a8a;
    font-size:.72rem;padding:4px 12px;border-radius:8px;
    cursor:pointer;font-family:inherit;transition:all .15s;margin-bottom:4px;
-   /* touch-friendly */
    min-height:32px;
 }}
 .bubble-play-btn:hover{{color:#f0a500;border-color:rgba(240,165,0,.4);background:rgba(240,165,0,.06);}}
@@ -345,7 +338,7 @@ html,body{{
    max-width:560px;width:100%;text-align:center;flex-shrink:0;
 }}
 
-/* ── Rodapé do mic — RESPONSIVO ── */
+/* ── Rodapé do mic ── */
 .mic-footer{{
    flex-shrink:0;
    width:100%;max-width:620px;
@@ -356,63 +349,40 @@ html,body{{
    position:sticky;bottom:0;
 }}
 
-/* ── Controles de áudio: linha única que não quebra ── */
+/* ── Controles de áudio ── */
 .audio-controls{{
-   display:flex;
-   align-items:center;
-   gap:6px;
-   padding:8px 12px;
-   background:#0d1420;
-   border:1px solid #1a2535;
-   border-radius:12px;
-   width:100%;
-   overflow-x:auto;          /* scroll horizontal se necessário */
-   overflow-y:hidden;
-   -webkit-overflow-scrolling:touch;
-   white-space:nowrap;
-   scrollbar-width:none;     /* esconde scrollbar */
-   flex-wrap:nowrap;         /* NUNCA quebra linha */
-   min-height:44px;
+   display:flex;align-items:center;gap:6px;padding:8px 12px;
+   background:#0d1420;border:1px solid #1a2535;border-radius:12px;
+   width:100%;overflow-x:auto;overflow-y:hidden;
+   -webkit-overflow-scrolling:touch;white-space:nowrap;
+   scrollbar-width:none;flex-wrap:nowrap;min-height:44px;
 }}
 .audio-controls::-webkit-scrollbar{{display:none;}}
-
-/* Em telas muito pequenas, reduz padding e fonte */
 @media(max-width:400px){{
    .audio-controls{{padding:6px 10px;gap:4px;}}
    .ctrl-label{{font-size:.6rem;}}
    .ctrl-val{{font-size:.6rem;min-width:24px;}}
    #global-play-btn{{padding:4px 10px;font-size:.72rem;}}
 }}
-
 .ctrl-label{{font-size:.68rem;color:#4a5a6a;white-space:nowrap;flex-shrink:0;}}
 .ctrl-val{{font-size:.68rem;color:#8b949e;min-width:28px;text-align:left;flex-shrink:0;}}
-
 input[type=range].ctrl-range{{
-   -webkit-appearance:none;
-   flex-shrink:0;
-   width:60px;
-   height:4px;
-   background:#1a2535;border-radius:2px;outline:none;cursor:pointer;
-   touch-action:none;   /* evita scroll ao arrastar no mobile */
+   -webkit-appearance:none;flex-shrink:0;width:60px;height:4px;
+   background:#1a2535;border-radius:2px;outline:none;cursor:pointer;touch-action:none;
 }}
-@media(min-width:480px){{
-   input[type=range].ctrl-range{{ width:80px; }}
-}}
+@media(min-width:480px){{ input[type=range].ctrl-range{{ width:80px; }} }}
 input[type=range].ctrl-range::-webkit-slider-thumb{{
-   -webkit-appearance:none;width:16px;height:16px;  /* maior para touch */
+   -webkit-appearance:none;width:16px;height:16px;
    border-radius:50%;background:{ring_color};cursor:pointer;
 }}
 input[type=range].ctrl-range::-moz-range-thumb{{
    width:16px;height:16px;border-radius:50%;background:{ring_color};cursor:pointer;border:none;
 }}
-
 #global-play-btn{{
    background:#1a2535;color:#e6edf3;border:1px solid #252d3d;
    border-radius:8px;padding:5px 12px;font-size:.78rem;cursor:pointer;
    white-space:nowrap;transition:background .15s;font-family:inherit;
-   flex-shrink:0;
-   min-height:32px;        /* touch-friendly */
-   touch-action:manipulation;
+   flex-shrink:0;min-height:32px;touch-action:manipulation;
 }}
 #global-play-btn:hover{{background:#252d3d;}}
 
@@ -424,18 +394,12 @@ input[type=range].ctrl-range::-moz-range-thumb{{
    display:flex;align-items:center;justify-content:center;
    box-shadow:0 4px 20px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05);
    transition:all .2s;outline:none;
-   touch-action:manipulation;   /* remove delay 300ms no mobile */
-   -webkit-tap-highlight-color:transparent;
-   flex-shrink:0;
+   touch-action:manipulation;-webkit-tap-highlight-color:transparent;flex-shrink:0;
 }}
-/* Mic maior em tablets */
-@media(min-width:600px){{
-   .mic-btn{{width:80px;height:80px;font-size:32px;}}
-}}
+@media(min-width:600px){{ .mic-btn{{width:80px;height:80px;font-size:32px;}} }}
 .mic-btn:hover{{background:linear-gradient(135deg,#1e2f40,#182130);color:#e6edf3;}}
 .mic-btn.recording{{
    background:linear-gradient(135deg,#e05c2a,#c44a1a);color:#fff;
-   box-shadow:0 0 0 0 rgba(224,92,42,.6),0 4px 20px rgba(224,92,42,.3);
    animation:mic-pulse 1.2s ease-in-out infinite;
 }}
 .mic-btn.processing{{
@@ -482,7 +446,6 @@ input[type=range].ctrl-range::-moz-range-thumb{{
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script>
 (function(){{
-// ── Dados do Python ──
 var TTS_B64      = {tts_js};
 var REPLY        = {reply_js};
 var HISTORY      = {history_js};
@@ -495,15 +458,6 @@ var GOOD_PRONUNC = {good_pronunc_js};
 var PHOTO        = {photo_js};
 var PROF_NAME    = {prof_name_js};
 
-// NOVAS VARIÁVEIS DE TRADUÇÃO
-var T_ONLINE = {t_online_js};
-var T_LISTENING = {t_listen_js};
-var T_PROC = {t_proc_js};
-var T_PLAY = {t_play_js};
-var T_STOP = {t_stop_js};
-var T_YOU = {t_you_js};
-
-// 7 frames
 var F_NORMAL     = {av_normal_js};
 var F_MEIO       = {av_meio_js};
 var F_ABERTA     = {av_aberta_js};
@@ -512,106 +466,78 @@ var F_OUVINDO    = {av_ouvindo_js};
 var F_PISCANDO   = {av_piscando_js};
 var F_SURPRESA   = {av_surpresa_js};
 
-// ── Elementos ──
-var micBtn   = document.getElementById('micBtn');
-var micHint  = document.getElementById('micHint');
-var statusTxt= document.getElementById('statusTxt');
-var errBox   = document.getElementById('errBox');
-var ring     = document.getElementById('ring');
-var avImg    = document.getElementById('avImg');
-var avEmoji  = document.getElementById('avEmoji');
-var histWrap = document.getElementById('historyWrap');
-var profName = document.getElementById('profName');
+var micBtn    = document.getElementById('micBtn');
+var micHint   = document.getElementById('micHint');
+var statusTxt = document.getElementById('statusTxt');
+var errBox    = document.getElementById('errBox');
+var ring      = document.getElementById('ring');
+var avImg     = document.getElementById('avImg');
+var avEmoji   = document.getElementById('avEmoji');
+var histWrap  = document.getElementById('historyWrap');
+var profName  = document.getElementById('profName');
 
 profName.textContent = PROF_NAME;
 micHint.textContent  = TAP_SPEAK;
 
-// ══════════════════════════════════════════════════════════════════════════════
-// CONTROLE DE FRAME
-// ══════════════════════════════════════════════════════════════════════════════
+// ── Frame control ──
 var _lastFrame = '';
 function setFrame(src){{
    if(!src || src === _lastFrame) return;
    _lastFrame = src;
-   avImg.src  = src;
+   avImg.src = src;
    avImg.style.display   = 'block';
    avEmoji.style.display = 'none';
 }}
 setFrame(HAS_ANIM ? F_NORMAL : (PHOTO || F_NORMAL));
 
-// ══════════════════════════════════════════════════════════════════════════════
-// MÁQUINA DE ESTADOS:  idle | listening | processing | speaking
-// ══════════════════════════════════════════════════════════════════════════════
-var _state      = 'idle';
-var _blinkTimer = null;
-var _mouthTimer = null;
-var _analyser   = null;
-var _audioCtx   = null;
-var _mouthFallbackIdx = 0;
+// ── State machine ──
+var _state = 'idle', _blinkTimer = null, _mouthTimer = null;
+var _analyser = null, _audioCtx = null, _mouthFallbackIdx = 0;
 
 function _stopAllTimers(){{
    if(_blinkTimer){{ clearTimeout(_blinkTimer); clearInterval(_blinkTimer); _blinkTimer = null; }}
    if(_mouthTimer){{ clearInterval(_mouthTimer); _mouthTimer = null; }}
 }}
 
-// ── IDLE: normal + piscar natural (3-5s, 150ms fechado) ──
 function enterIdle(){{
-   _stopAllTimers();
-   _state = 'idle';
-   setFrame(F_NORMAL);
-   ring.classList.remove('active');
-    statusTxt.textContent = T_ONLINE;
-    statusTxt.textContent = '● Online';
+   _stopAllTimers(); _state = 'idle';
+   setFrame(F_NORMAL); ring.classList.remove('active');
+   statusTxt.textContent = '● Online';
    if(!HAS_ANIM) return;
-   function scheduleBlink(){{
-       var delay = 3210 + Math.random() * 2000;
+   (function scheduleBlink(){{
        _blinkTimer = setTimeout(function(){{
            if(_state !== 'idle') return;
            setFrame(F_PISCANDO);
            setTimeout(function(){{
                if(_state !== 'idle') return;
-               setFrame(F_NORMAL);
-               scheduleBlink();
+               setFrame(F_NORMAL); scheduleBlink();
            }}, 150);
-       }}, delay);
-   }}
-   scheduleBlink();
+       }}, 3210 + Math.random() * 2000);
+   }})();
 }}
 
-// ── LISTENING: frame ouvindo fixo enquanto mic está ativo ──
 function enterListening(){{
-   _stopAllTimers();
-   _state = 'listening';
+   _stopAllTimers(); _state = 'listening';
    setFrame(HAS_ANIM ? F_OUVINDO : PHOTO);
    ring.classList.remove('active');
-    statusTxt.textContent = T_LISTENING;
-    statusTxt.textContent = '🎙 Ouvindo…';
+   statusTxt.textContent = '🎙 Ouvindo…';
 }}
 
-// ── PROCESSING: normal com piscada lenta enquanto Claude pensa ──
 function enterProcessing(){{
-   _stopAllTimers();
-   _state = 'processing';
+   _stopAllTimers(); _state = 'processing';
    setFrame(HAS_ANIM ? F_NORMAL : PHOTO);
    ring.classList.remove('active');
-    statusTxt.textContent = T_PROC;
-    statusTxt.textContent = '⏳ Processando…';
+   statusTxt.textContent = '⏳ Processando…';
    if(!HAS_ANIM) return;
    _blinkTimer = setInterval(function(){{
        if(_state !== 'processing') return;
        setFrame(F_PISCANDO);
-       setTimeout(function(){{
-           if(_state !== 'processing') return;
-           setFrame(F_NORMAL);
-       }}, 180);
+       setTimeout(function(){{ if(_state !== 'processing') return; setFrame(F_NORMAL); }}, 180);
    }}, 2200);
 }}
 
-// ── SPEAKING: sincronização labial via Web Audio API ──
-// normal = boca fechada (pausas) | meio = boca aberta (fala)
 function enterSpeaking(audioEl){{
-   _stopAllTimers();
-   _state = 'speaking';
+   _stopAllTimers(); _state = 'speaking';
    ring.classList.add('active');
    statusTxt.textContent = SPEAKING;
    if(!HAS_ANIM) return;
@@ -622,8 +548,7 @@ function enterSpeaking(audioEl){{
            _analyser.fftSize = 1024;
            _analyser.smoothingTimeConstant = 0.1;
            var src = _audioCtx.createMediaElementSource(audioEl);
-           src.connect(_analyser);
-           _analyser.connect(_audioCtx.destination);
+           src.connect(_analyser); _analyser.connect(_audioCtx.destination);
        }}
        var buf = new Uint8Array(_analyser.frequencyBinCount);
        _mouthTimer = setInterval(function(){{
@@ -631,35 +556,34 @@ function enterSpeaking(audioEl){{
            _analyser.getByteFrequencyData(buf);
            var sum = 0, n = Math.min(100, buf.length);
            for(var i = 4; i < n; i++) sum += buf[i];
-           var avg = sum / (n - 4);
-           setFrame(avg < 18 ? F_NORMAL : F_MEIO);
+           setFrame((sum / (n - 4)) < 18 ? F_NORMAL : F_MEIO);
        }}, 60);
    }}catch(e){{
-       // Fallback sem Web Audio: alterna meio↔normal a ~2Hz
        _mouthFallbackIdx = 0;
        _mouthTimer = setInterval(function(){{
            if(_state !== 'speaking') return;
-           setFrame(_mouthFallbackIdx % 2 === 0 ? F_MEIO : F_NORMAL);
-           _mouthFallbackIdx++;
+           setFrame(_mouthFallbackIdx++ % 2 === 0 ? F_MEIO : F_NORMAL);
        }}, 250);
    }}
 }}
 
-// ── Fim da fala: reação de aprovação se pronúncia foi elogiada ──
 function onSpeakingEnded(goodPronunc){{
-   _stopAllTimers();
-   if(goodPronunc && F_BEM_ABERTA){{
-       setFrame(F_BEM_ABERTA);
-       setTimeout(function(){{ enterIdle(); }}, 1200);
-   }} else {{
-       enterIdle();
-   }}
+   _stopAllTimers(); _analyser = null;
+   if(goodPronunc && F_BEM_ABERTA){{ setFrame(F_BEM_ABERTA); setTimeout(enterIdle, 1200); }}
+   else enterIdle();
 }}
 
-// ── Áudio global ──
+// ── Audio playback ──
 var currentAudio = null, lastB64 = null;
 function getVol(){{ return parseFloat(document.getElementById('vol-slider').value) || 1; }}
 function getSpd(){{ return parseFloat(document.getElementById('spd-slider').value) || 1; }}
+
+function updateGlobalBtn(playing){{
+   var btn = document.getElementById('global-play-btn');
+   if(!btn) return;
+   btn.textContent = playing ? '⏹ Parar' : '▶ Ouvir';
+   btn.style.background = playing ? '#8b2a2a' : '#1a2535';
+}}
 
 function playTTS(b64, onEndCallback){{
    if(currentAudio){{ currentAudio.pause(); currentAudio = null; }}
@@ -669,208 +593,159 @@ function playTTS(b64, onEndCallback){{
    var audio = new Audio('data:audio/mp3;base64,' + b64);
    audio.volume = getVol(); audio.playbackRate = getSpd(); audio._srcB64 = b64;
    currentAudio = audio;
-   audio.onplay   = function(){{ enterSpeaking(audio); updateGlobalBtn(true); }};
-   audio.onended  = function(){{
+   audio.onplay  = function(){{ enterSpeaking(audio); updateGlobalBtn(true); }};
+   audio.onended = function(){{
        currentAudio = null; updateGlobalBtn(false);
        onSpeakingEnded(GOOD_PRONUNC);
        if(onEndCallback) onEndCallback();
    }};
-   audio.onerror  = function(){{ currentAudio = null; updateGlobalBtn(false); enterIdle(); }};
+   audio.onerror = function(){{ currentAudio = null; updateGlobalBtn(false); enterIdle(); }};
    audio.play().catch(function(){{ currentAudio = null; updateGlobalBtn(false); enterIdle(); }});
 }}
+
 function stopTTS(){{
    if(currentAudio){{ currentAudio.pause(); currentAudio = null; }}
-   _analyser = null;
-   updateGlobalBtn(false); enterIdle();
-}}
-function updateGlobalBtn(playing){{
-   var btn=document.getElementById('global-play-btn');
-   if(!btn) return;
-    btn.textContent = playing ? T_STOP : T_PLAY;
-    btn.textContent = playing ? '⏹ Parar' : '▶ Ouvir';
-   btn.style.background = playing ? '#8b2a2a' : '#1a2535';
+   _analyser = null; updateGlobalBtn(false); enterIdle();
 }}
 
-// ── Controles ──
-document.getElementById('global-play-btn').addEventListener('click',function(){{
-   if(currentAudio&&!currentAudio.paused) stopTTS();
-   else if(lastB64||TTS_B64) playTTS(lastB64||TTS_B64);
+document.getElementById('global-play-btn').addEventListener('click', function(){{
+   if(currentAudio && !currentAudio.paused) stopTTS();
+   else if(lastB64 || TTS_B64) playTTS(lastB64 || TTS_B64);
 }});
-document.getElementById('vol-slider').addEventListener('input',function(){{
-   document.getElementById('vol-val').textContent=Math.round(this.value*100)+'%';
-   if(currentAudio) currentAudio.volume=parseFloat(this.value);
+document.getElementById('vol-slider').addEventListener('input', function(){{
+   document.getElementById('vol-val').textContent = Math.round(this.value * 100) + '%';
+   if(currentAudio) currentAudio.volume = parseFloat(this.value);
 }});
-document.getElementById('spd-slider').addEventListener('input',function(){{
-   document.getElementById('spd-val').textContent=parseFloat(this.value).toFixed(1)+'x';
-   if(currentAudio) currentAudio.playbackRate=parseFloat(this.value);
+document.getElementById('spd-slider').addEventListener('input', function(){{
+   document.getElementById('spd-val').textContent = parseFloat(this.value).toFixed(1) + 'x';
+   if(currentAudio) currentAudio.playbackRate = parseFloat(this.value);
 }});
 
-// ── Renderiza bolhas com botão ▶ por bolha ──
+// ── Render bubbles ──
 function addBubble(role, text, b64){{
-   var label=document.createElement('div');
-   label.className='bubble-label'+(role==='user'?' right':'');
-    label.textContent=role==='user'? T_YOU :PROF_NAME;
-    label.textContent=role==='user'?'Você':PROF_NAME;
-
-   var bub=document.createElement('div');
-   bub.className='bubble '+role;
-   bub.textContent=text;
-
+   var label = document.createElement('div');
+   label.className = 'bubble-label' + (role === 'user' ? ' right' : '');
+   label.textContent = role === 'user' ? 'Você' : PROF_NAME;
+   var bub = document.createElement('div');
+   bub.className = 'bubble ' + role;
+   bub.textContent = text;
    histWrap.appendChild(label);
    histWrap.appendChild(bub);
-
-   // Botão ▶ apenas para mensagens do bot COM áudio salvo
-   if(role==='bot'&&b64){{
-       var pbtn=document.createElement('button');
-        pbtn.className=T_PLAY;
-        pbtn.className='bubble-play-btn';
-       pbtn.textContent='▶ Ouvir';
-       pbtn.addEventListener('click',function(){{
-           var isPlaying=currentAudio&&!currentAudio.paused&&currentAudio._srcB64===b64;
+   if(role === 'bot' && b64){{
+       var pbtn = document.createElement('button');
+       pbtn.className = 'bubble-play-btn';
+       pbtn.textContent = '▶ Ouvir';
+       pbtn.addEventListener('click', function(){{
+           var isPlaying = currentAudio && !currentAudio.paused && currentAudio._srcB64 === b64;
            if(isPlaying){{
-               stopTTS(); pbtn.textContent='▶ Ouvir'; pbtn.classList.remove('playing');
-           }}else{{
-               // reseta todos os outros botões de bolha
+               stopTTS(); pbtn.textContent = '▶ Ouvir'; pbtn.classList.remove('playing');
+           }} else {{
                document.querySelectorAll('.bubble-play-btn').forEach(function(b){{
-                   b.textContent='▶ Ouvir'; b.classList.remove('playing');
+                   b.textContent = '▶ Ouvir'; b.classList.remove('playing');
                }});
-                pbtn.textContent=T_STOP; pbtn.classList.add('playing');
-                pbtn.textContent='⏹ Parar'; pbtn.classList.add('playing');
-               playTTS(b64, function(){{
-                    pbtn.textContent=T_PLAY; pbtn.classList.remove('playing');
-                    pbtn.textContent='▶ Ouvir'; pbtn.classList.remove('playing');
-               }});
+               pbtn.textContent = '⏹ Parar'; pbtn.classList.add('playing');
+               playTTS(b64, function(){{ pbtn.textContent = '▶ Ouvir'; pbtn.classList.remove('playing'); }});
            }}
        }});
        histWrap.appendChild(pbtn);
    }}
-   histWrap.scrollTop=histWrap.scrollHeight;
+   histWrap.scrollTop = histWrap.scrollHeight;
 }}
 
-// ── Renderiza estado atual ──
-if(HISTORY && HISTORY.length > 0) {{
-    HISTORY.forEach(function(msg){{
-        var role = msg.role === 'user' ? 'user' : 'bot';
-        addBubble(role, msg.content, msg.tts_b64 || '');
-    }});
-}}
-
-// 2. Controla a caixa de erro e a inicialização de áudio
+// ── Render initial state ──
 if(VM_ERROR){{
-    errBox.textContent = VM_ERROR; 
-    errBox.style.display = 'block'; 
-    enterIdle();
-    errBox.textContent=VM_ERROR; errBox.style.display='block'; enterIdle();
-}}else{{
-    errBox.style.display = 'none';
-    errBox.style.display='none';
-    if(HISTORY&&HISTORY.length>0){{
-        HISTORY.forEach(function(msg){{
-            var role=msg.role==='user'?'user':'bot';
-            addBubble(role, msg.content, msg.tts_b64||'');
-        }});
-    }}
-   // Autoplay da resposta mais recente
-    if(TTS_B64) setTimeout(function(){{ playTTS(TTS_B64); }}, 300);
-    if(TTS_B64) setTimeout(function(){{ playTTS(TTS_B64); }},300);
+   errBox.textContent = VM_ERROR; errBox.style.display = 'block'; enterIdle();
+}} else {{
+   errBox.style.display = 'none';
+   if(HISTORY && HISTORY.length > 0){{
+       HISTORY.forEach(function(msg){{
+           addBubble(msg.role === 'user' ? 'user' : 'bot', msg.content, msg.tts_b64 || '');
+       }});
+   }}
+   if(TTS_B64) setTimeout(function(){{ playTTS(TTS_B64); }}, 300);
    else        enterIdle();
 }}
 
-// ── Mic ──
-var recording=false;
+// ── Mic button ──
+var recording = false;
 function getRealMicBtn(){{
-   var doc=window.parent.document;
-   var ai=doc.querySelector('[data-testid="stAudioInput"]');
+   var doc = window.parent.document;
+   var ai  = doc.querySelector('[data-testid="stAudioInput"]');
    if(!ai) return null;
-   return ai.querySelector('button')||ai.querySelector('[data-testid="stAudioInputRecordButton"]');
+   return ai.querySelector('button') || ai.querySelector('[data-testid="stAudioInputRecordButton"]');
 }}
-micBtn.addEventListener('click',function(){{
-   var realBtn=getRealMicBtn();
+micBtn.addEventListener('click', function(){{
+   var realBtn = getRealMicBtn();
    if(!realBtn) return;
    if(recording){{
        recording = false;
-       micBtn.classList.remove('recording');
-       micBtn.classList.add('processing');
-       micBtn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>';
-       micHint.textContent=TAP_SPEAK;
-       enterProcessing();
-       realBtn.click();
-   }}else{{
-       if(currentAudio){{ currentAudio.pause(); currentAudio=null; }}
+       micBtn.classList.remove('recording'); micBtn.classList.add('processing');
+       micBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+       micHint.textContent = TAP_SPEAK;
+       enterProcessing(); realBtn.click();
+   }} else {{
+       if(currentAudio){{ currentAudio.pause(); currentAudio = null; }}
        if(window.parent.speechSynthesis) window.parent.speechSynthesis.cancel();
        recording = true;
-       micBtn.classList.remove('processing');
-       micBtn.classList.add('recording');
-       micBtn.innerHTML='<i class="fa-solid fa-stop"></i>';
-       micHint.textContent=TAP_STOP;
-       enterListening();
-       realBtn.click();
+       micBtn.classList.remove('processing'); micBtn.classList.add('recording');
+       micBtn.innerHTML = '<i class="fa-solid fa-stop"></i>';
+       micHint.textContent = TAP_STOP;
+       enterListening(); realBtn.click();
    }}
 }});
 
-// ── Esconde stAudioInput nativo ──
+// ── Hide native audio input ──
 function hideNativeAudio(){{
-   var doc=window.parent.document;
-   var ai=doc.querySelector('[data-testid="stAudioInput"]');
+   var doc = window.parent.document;
+   var ai  = doc.querySelector('[data-testid="stAudioInput"]');
    if(ai){{
-       ai.style.cssText='position:fixed;bottom:-999px;left:-9999px;opacity:0;pointer-events:none;width:1px;height:1px;';
-       var btn=ai.querySelector('button');
-       if(btn) btn.style.pointerEvents='auto';
+       ai.style.cssText = 'position:fixed;bottom:-999px;left:-9999px;opacity:0;pointer-events:none;width:1px;height:1px;';
+       var btn = ai.querySelector('button');
+       if(btn) btn.style.pointerEvents = 'auto';
    }}
 }}
 hideNativeAudio();
 try{{
-   var obs=new MutationObserver(hideNativeAudio);
-   obs.observe(window.parent.document.body,{{childList:true,subtree:true}});
-   setTimeout(function(){{obs.disconnect();}},15000);
+   var obs = new MutationObserver(hideNativeAudio);
+   obs.observe(window.parent.document.body, {{childList:true, subtree:true}});
+   setTimeout(function(){{ obs.disconnect(); }}, 15000);
 }}catch(e){{}}
 
-// ── Resize iframe — usa dvh para mobile (esconde barra do browser) ──
+// ── Resize iframe ──
 (function resizeIframe(){{
    try{{
        var par = window.parent;
-       // Altura real do viewport (dvh = dynamic viewport height, funciona no mobile)
        var h = par.innerHeight;
-       try{{
-           // visualViewport é mais preciso no mobile (exclui teclado virtual)
-           if(par.visualViewport) h = par.visualViewport.height;
-       }}catch(e){{}}
-
+       try{{ if(par.visualViewport) h = par.visualViewport.height; }}catch(e){{}}
        var iframes = par.document.querySelectorAll('iframe');
-       for(var i=0;i<iframes.length;i++){{
+       for(var i = 0; i < iframes.length; i++){{
            try{{
-               if(iframes[i].contentWindow===window){{
-                   iframes[i].style.cssText=[
-                       'height:'+h+'px',
-                       'max-height:'+h+'px',
-                       'min-height:200px',
-                       'display:block',
-                       'border:none',
-                       'width:100%',
+               if(iframes[i].contentWindow === window){{
+                   iframes[i].style.cssText = [
+                       'height:'+h+'px','max-height:'+h+'px',
+                       'min-height:200px','display:block','border:none','width:100%'
                    ].join(';');
-                   // Remove padding/margin dos wrappers Streamlit
-                   var p=iframes[i].parentElement;
-                   for(var j=0;j<10&&p&&p!==par.document.body;j++){{
-                       p.style.margin='0';p.style.padding='0';
-                       p.style.overflow='hidden';p.style.maxHeight=h+'px';
-                       p=p.parentElement;
+                   var p = iframes[i].parentElement;
+                   for(var j = 0; j < 10 && p && p !== par.document.body; j++){{
+                       p.style.margin = p.style.padding = '0';
+                       p.style.overflow = 'hidden'; p.style.maxHeight = h+'px';
+                       p = p.parentElement;
                    }}
                    break;
                }}
            }}catch(e){{}}
        }}
    }}catch(e){{}}
-
-   // Re-executa ao redimensionar E ao mudar visualViewport (teclado mobile)
    try{{
-       par.removeEventListener('resize',resizeIframe);
-       par.addEventListener('resize',resizeIframe);
-       if(par.visualViewport){{
-           par.visualViewport.removeEventListener('resize',resizeIframe);
-           par.visualViewport.addEventListener('resize',resizeIframe);
+       var par2 = window.parent;
+       par2.removeEventListener('resize', resizeIframe);
+       par2.addEventListener('resize', resizeIframe);
+       if(par2.visualViewport){{
+           par2.visualViewport.removeEventListener('resize', resizeIframe);
+           par2.visualViewport.addEventListener('resize', resizeIframe);
        }}
    }}catch(e){{}}
 }})();
 
 }})();
-</script>
+</script></body></html>""", height=700, scrolling=False)
