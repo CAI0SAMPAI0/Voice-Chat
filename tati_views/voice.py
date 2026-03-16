@@ -207,12 +207,12 @@ html,body{overflow:hidden!important;}
     speaking_  = json.dumps(t("speaking_ai",  lang))
     proc_      = json.dumps(t("processing",   lang))
 
-    t_online_js = json.dumps(f"● {t('online', lang, 'Online')}")
-    t_listen_js = json.dumps(f"🎙 {t('listening', lang, 'Ouvindo')}…")
-    t_proc_js   = json.dumps(f"⏳ {t('processing', lang, 'Processando')}…")
-    t_play_js   = json.dumps(f"▶ {t('listen', lang, 'Ouvir')}")
-    t_stop_js   = json.dumps(f"⏹ {t('pause', lang, 'Parar')}")
-    t_you_js    = json.dumps(t("you", lang, 'Você'))
+    t_online_js = json.dumps(f"● {t('online', lang)}")
+    t_listen_js = json.dumps(f"🎙 {t('listening', lang)}…")
+    t_proc_js   = json.dumps(f"⏳ {t('processing', lang)}…")
+    t_play_js   = json.dumps(f"▶ {t('listen', lang)}")
+    t_stop_js   = json.dumps(f"⏹ {t('pause', lang)}")
+    t_you_js    = json.dumps(t("you", lang))
 
     av_normal_js     = json.dumps(frames.get("normal",     ""))
     av_meio_js       = json.dumps(frames.get("meio",       ""))
