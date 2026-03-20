@@ -1,27 +1,25 @@
 """
-guards/page_guard.py — Evita flash de conteúdo errado em todas as páginas.
+guards/page_guard.py — Anti-flash + autenticação + scroll por página.
 
-Uso em cada view:
-    from guards.page_guard import page_guard
+Mudanças vs versão anterior:
+─────────────────────────────
+1. scroll_restore() era GLOBAL: afetava stVerticalBlock em todo o DOM,
+   incluindo os botões da sidebar (mudava gap e espaçamento dos itens
+   de nav dependendo da página ativa). Corrigido: agora restringe os
+   overrides ao conteúdo principal via seletor
+   `section[data-testid="stMain"]`, nunca tocando na sidebar.
 
-    @page_guard
-    def show_voice():
-        ...
-
-    # ou sem decorator:
-    def show_voice():
-        with page_guard_context():
-            ...
+2. Adicionado comentário explicando por que cada seletor existe —
+   para o próximo dev não "consertar" e reintroduzir o bug.
 """
 
 import streamlit as st
 from functools import wraps
 
 
-# CSS que bloqueia qualquer flash visual durante carregamento
+# CSS anti-flash: esconde tudo enquanto a página carrega
 _LOADING_CSS = """
 <style>
-/* Esconde TODO conteúdo enquanto a classe pav-loading está no body */
 body.pav-loading > * { visibility: hidden !important; }
 body.pav-loading .stApp { background: #060a10 !important; }
 </style>
@@ -40,7 +38,6 @@ _LOADING_JS = """
     }
     if(doc.readyState === 'complete') ready();
     else doc.addEventListener('DOMContentLoaded', ready);
-    // Garantia: remove após 400ms no máximo
     setTimeout(function(){ doc.body.classList.remove('pav-loading'); }, 400);
 })();
 </script>
@@ -60,7 +57,7 @@ def page_guard(func):
     """
     Decorator que:
     1. Injeta anti-flash antes de renderizar
-    2. Bloqueia acesso se não estiver logado (redireciona para login)
+    2. Redireciona para login se não estiver autenticado
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -78,13 +75,50 @@ def page_guard(func):
 def scroll_restore() -> None:
     """
     Restaura scroll nas páginas que precisam (history, settings, dashboard).
-    Equivale ao bloco CSS que estava repetido em cada view.
+
+    POR QUE EXISTE:
+    voice.css define overflow: hidden globalmente (necessário para a tela
+    de voz não ter scroll). Ao navegar para history/settings/dashboard,
+    esse CSS ainda está no DOM (Streamlit não limpa estilos entre reruns).
+    Esta função sobrescreve apenas o necessário para a página atual rolar.
+
+    POR QUE O ESCOPO É RESTRITO A stMain:
+    A versão anterior usava seletores globais como:
+        div[data-testid="stVerticalBlock"] { gap: revert !important; }
+    Isso afetava os botões da sidebar — que também são stVerticalBlock —
+    mudando o espaçamento dos itens de nav dependendo de qual página
+    estava ativa. O resultado eram sidebar com aparência diferente em
+    cada tela.
+
+    Solução: todos os overrides agora vivem dentro de
+    `section[data-testid="stMain"]`, que é o container do conteúdo
+    principal e nunca inclui a sidebar.
     """
     st.markdown("""<style>
-html, body { overflow: auto !important; }
+/* Restaura scroll APENAS no conteúdo principal */
+section[data-testid="stMain"] {
+    overflow-y: auto !important;
+}
 section[data-testid="stMain"] > div,
-.main .block-container { overflow: auto !important; max-height: none !important; }
-div[data-testid="stVerticalBlock"],
-div[data-testid="stVerticalBlockBorderWrapper"],
-div[data-testid="element-container"] { gap: revert !important; }
+.main .block-container {
+    overflow:   auto !important;
+    max-height: none !important;
+    height:     auto !important;
+}
+
+/*
+ * Restaura gap dos blocos verticais APENAS dentro do main.
+ * NÃO usa seletor global para não afetar a sidebar.
+ */
+section[data-testid="stMain"] div[data-testid="stVerticalBlock"],
+section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"],
+section[data-testid="stMain"] div[data-testid="element-container"] {
+    gap:        revert !important;
+    height:     auto   !important;
+    max-height: none   !important;
+    overflow:   visible !important;
+}
+
+/* Restaura html/body para permitir scroll de página */
+html, body { overflow-y: auto !important; }
 </style>""", unsafe_allow_html=True)

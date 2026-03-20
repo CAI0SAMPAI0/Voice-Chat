@@ -1,13 +1,7 @@
-"""
-ui_helpers.py — Carregamento de CSS/JS/HTML externos + helpers de sessão.
-Toda string de estilo/script foi movida para assets/.
-"""
-
 import os
 import base64
 import json
 from pathlib import Path
-
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -16,17 +10,13 @@ from database import (
     get_user_avatar_db, save_user_avatar_db, remove_user_avatar_db,
 )
 
-# =============================================================================
 # CONSTANTES
-# =============================================================================
 PROF_NAME  = os.getenv("PROFESSOR_NAME", "Teacher Tati")
 PHOTO_PATH = os.getenv("PROFESSOR_PHOTO", "assets/professor.jpg")
 _ASSETS    = Path(__file__).resolve().parent / "assets"
 
 
-# =============================================================================
 # LOADERS DE ASSET
-# =============================================================================
 
 def load_css(filename: str) -> str:
     """Lê assets/css/<filename> e devolve uma tag <style>."""
@@ -60,9 +50,7 @@ def inject_global_css():
     st.markdown(load_css("sidebar.css"), unsafe_allow_html=True)
 
 
-# =============================================================================
 # I18N
-# =============================================================================
 _STRINGS = {
     "pt-BR": {
         "username": "Usuário", "password": "Senha",
@@ -139,10 +127,7 @@ _STRINGS = {
 def t(key: str, lang: str = "pt-BR") -> str:
     return _STRINGS.get(lang, _STRINGS["pt-BR"]).get(key, key)
 
-
-# =============================================================================
 # FOTO / AVATAR (com cache)
-# =============================================================================
 
 @st.cache_data(ttl=300)
 def get_photo_b64() -> str | None:
@@ -225,10 +210,7 @@ def _avatar_circle_html(b64: str | None, size: int, border: str = "#f0a500") -> 
 def user_avatar_html(username: str, size: int = 36, **_) -> str:
     return _avatar_circle_html(_get_avatar(username), size)
 
-
-# =============================================================================
 # HELPER: monta a tela de voz a partir do template HTML
-# =============================================================================
 
 def _rgba(h: str, a: float) -> str:
     h = h.lstrip("#")
@@ -278,9 +260,7 @@ def build_voice_html(user: dict, history: list, tts_b64: str, vm_error: str) -> 
     )
 
 
-# =============================================================================
 # SESSION
-# =============================================================================
 SESSION_DEFAULTS = {
     "logged_in": False, "user": None, "page": "voice",
     "conv_id": None, "audio_key": 0,
@@ -333,10 +313,7 @@ def js_toggle_sidebar() -> None:
     _js_run("sidebar.js")
 
 
-# =============================================================================
 # TOAST NOTIFICATIONS
-# =============================================================================
-
 
 def show_toast(message: str, type: str = "success") -> None:
     """Exibe um toast no canto superior direito."""
@@ -391,10 +368,8 @@ def get_or_create_conv(username: str) -> str:
     st.session_state.conv_id = cid
     return cid
 
-
-# =============================================================================
 # SIDEBAR
-# =============================================================================
+
 def show_sidebar() -> None:
     user     = st.session_state.user
     username = user["username"]
@@ -407,7 +382,7 @@ def show_sidebar() -> None:
     with st.sidebar:
         uav_html = user_avatar_html(username, size=62)
         st.markdown(f"""
-<div class="sb-user-row">
+<div class="sb-user-row" id="user_avatar">
     {uav_html}
     <div>
         <div class="sb-user-name">{user.get('name','').split()[0]}</div>
@@ -422,7 +397,7 @@ def show_sidebar() -> None:
             ("settings", f"⚙️ {t('settings',   lang)}"),
             ("history",  f"📄 {t('history',    lang)}"),
         ]
-        if user.get("role") in ("professor", "programador"):
+        if user.get("role") in ("professor", "programador", "professora", "Professora", "Tatiana", "Tati"):
             nav_items.append(("dashboard", f"📊 {t('dashboard', lang)}"))
 
 

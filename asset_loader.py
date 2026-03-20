@@ -5,8 +5,8 @@ Centraliza toda injeção de recursos no Streamlit.
 Uso:
     from asset_loader import css, js, html, inject_css, inject_js
 
-    inject_css("global")          # injeta <style> do global.css
-    inject_css("global", "voice") # injeta múltiplos de uma vez
+    inject_css("global")           # injeta <style> do global.css
+    inject_css("global", "voice")  # injeta múltiplos de uma vez
     inject_js("session", token=token_value)  # com substituição de variáveis
     card = html("avatar_card", name="Tati", status="Online")
 """
@@ -20,16 +20,19 @@ _BASE = Path(__file__).resolve().parent / "assets"
 # ── Leitura raw ───────────────────────────────────────────────────────────────
 
 def css(name: str) -> str:
-    """Retorna o conteúdo de assets/css/{name}.css como string."""
+    """Retorna o conteúdo de assets/css/{name}.css como string.
+    Lê do disco a cada chamada — sem cache — para refletir edições imediatas.
+    """
     path = _BASE / "css" / f"{name}.css"
     if not path.exists():
         return f"/* ⚠️ assets/css/{name}.css não encontrado */"
-    return path.read_text(encoding="utf-8")
+    # mtime como comentário força o browser a tratar como bloco diferente
+    mtime = int(path.stat().st_mtime)
+    return f"/* {name} v{mtime} */\n" + path.read_text(encoding="utf-8")
 
 
 def js(name: str, **vars: str) -> str:
-    """
-    Retorna o conteúdo de assets/js/{name}.js como string.
+    """Retorna o conteúdo de assets/js/{name}.js como string.
     Substitui {{VAR_NAME}} pelas variáveis passadas como kwargs.
     """
     path = _BASE / "js" / f"{name}.js"
@@ -42,8 +45,7 @@ def js(name: str, **vars: str) -> str:
 
 
 def html(name: str, **vars: str) -> str:
-    """
-    Retorna o conteúdo de assets/html/{name}.html como string.
+    """Retorna o conteúdo de assets/html/{name}.html como string.
     Substitui {{VAR_NAME}} pelas variáveis passadas como kwargs.
     """
     path = _BASE / "html" / f"{name}.html"
@@ -58,7 +60,12 @@ def html(name: str, **vars: str) -> str:
 # ── Injeção no Streamlit ──────────────────────────────────────────────────────
 
 def inject_css(*names: str) -> None:
-    """Injeta um ou mais arquivos CSS no Streamlit via st.markdown."""
+    """Injeta um ou mais arquivos CSS no Streamlit via st.markdown.
+
+    Cada arquivo é lido do disco na hora — sem cache de módulo.
+    O comentário com mtime no topo de cada bloco garante que o browser
+    aplique a versão mais recente mesmo sem hard-refresh.
+    """
     combined = "\n".join(css(name) for name in names)
     st.markdown(f"<style>{combined}</style>", unsafe_allow_html=True)
 
@@ -75,9 +82,8 @@ def inject_html(name: str, **vars: str) -> None:
 
 
 def inject_component(name: str, height: int = 0, **vars: str) -> None:
-    """
-    Injeta um arquivo HTML como components.html (para JS que precisa
-    acessar window.parent ou manipular o DOM do Streamlit).
+    """Injeta um arquivo HTML como components.html.
+    Útil para JS que precisa acessar window.parent ou manipular o DOM.
     """
     import streamlit.components.v1 as components
     components.html(html(name, **vars), height=height)

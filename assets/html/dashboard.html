@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Variáveis dinâmicas passadas pelo Python ── */
+:root {
+  --ring-color:      {{RING_COLOR}};
+  --ring-color-dim:  {{RING_COLOR_DIM}};
+
+  --db-bg:           #07080f;
+  --db-bg-card:      #0d1220;
+  --db-border:       #1a2535;
+  --db-border-acc:   #8b5cf6;
+  --db-text:         #e6edf3;
+  --db-muted:        #8b949e;
+  --db-metric-color: var(--ring-color);
+  --db-radius:       14px;
+  --db-transition:   all 0.2s ease;
+}
+
+html, body {
+  background: var(--db-bg);
+  font-family: 'Sora', -apple-system, sans-serif;
+  color: var(--db-text);
+  min-height: 100%;
+  overflow: visible;
+}
+
+/* ════════════════════════ LAYOUT ════════════════════════ */
+#db-root {
+  padding: 2rem 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ════════════════════════ HEADER ════════════════════════ */
+#db-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--db-border);
+}
+
+#db-header h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--ring-color) 0%, #c084fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+#db-header-icon {
+  font-size: 2rem;
+}
+
+/* ════════════════════════ MÉTRICAS ════════════════════════ */
+#db-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.db-metric-card {
+  background: var(--db-bg-card);
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius);
+  padding: 1.5rem;
+  text-align: center;
+  transition: var(--db-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.db-metric-card:hover {
+  border-color: var(--ring-color);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px var(--ring-color-dim);
+}
+
+.db-metric-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--db-radius);
+  background: radial-gradient(circle at top right, var(--ring-color-dim), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.db-metric-card:hover::before { opacity: 1; }
+
+.db-metric-icon { font-size: 1.8rem; margin-bottom: 8px; display: block; }
+.db-metric-value {
+  font-size: 1.6rem; font-weight: 700;
+  color: var(--ring-color); margin: 0; line-height: 1;
+}
+.db-metric-label {
+  font-size: 0.68rem; color: var(--db-muted);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px;
+}
+
+/* ════════════════════════ PAINEL GLOBAL ERROS ════════════════════════ */
+#db-insights {
+  background: var(--db-bg-card);
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+#db-insights-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--db-muted);
+  margin-bottom: 1rem;
+}
+
+#db-insights-errors-title {
+  font-size: 0.78rem;
+  color: var(--db-muted);
+  margin-bottom: 0.8rem;
+}
+
+#db-error-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.db-error-tag {
+  background: rgba(224, 92, 42, 0.12);
+  border: 1px solid rgba(255, 122, 92, 0.35);
+  color: #ff8e73;
+  font-size: 0.78rem;
+  padding: 5px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: var(--db-transition);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.db-error-tag:hover {
+  background: rgba(224, 92, 42, 0.25);
+  border-color: #ff7a5c;
+  transform: scale(1.03);
+}
+
+.db-error-tag-count {
+  background: rgba(255,122,92,0.2);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+#db-global-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--db-border);
+}
+
+.db-global-stat-label {
+  font-size: 0.68rem;
+  color: var(--db-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.db-global-stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ring-color);
+  margin-top: 4px;
+}
+
+/* ════════════════════════ LISTA DE ALUNOS ════════════════════════ */
+#db-students-section { margin-bottom: 2rem; }
+
+#db-students-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--db-muted);
+  margin-bottom: 1rem;
+}
+
+#db-students-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Card de aluno */
+.db-student-card {
+  background: var(--db-bg-card);
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius);
+  overflow: hidden;
+  transition: var(--db-transition);
+}
+
+.db-student-card.db-urgent {
+  border-color: rgba(224, 92, 42, 0.4);
+  box-shadow: 0 0 12px rgba(224, 92, 42, 0.1);
+}
+
+.db-student-card.db-warning-card {
+  border-color: rgba(240, 165, 0, 0.35);
+}
+
+.db-student-card.db-top-card {
+  border-color: var(--ring-color);
+  box-shadow: 0 0 16px var(--ring-color-dim);
+}
+
+/* Header clicável */
+.db-student-header {
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--db-bg-card);
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.db-student-header:hover { background: #101929; }
+
+.db-student-name { font-weight: 600; font-size: 0.95rem; flex: 1; }
+
+.db-badge {
+  font-size: 0.65rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  padding: 3px 10px; border-radius: 12px;
+}
+
+.db-badge-level {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c084fc;
+}
+
+.db-status-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 12px; }
+.db-status-critical { background: rgba(224,92,42,0.15); color: #ff7a5c; }
+.db-status-warning  { background: rgba(240,165,0,0.15);  color: #f0a500; }
+.db-status-healthy  { background: rgba(74,222,128,0.15); color: #4ade80; }
+
+.db-chevron {
+  color: var(--db-muted);
+  transition: transform 0.2s;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.db-student-card.open .db-chevron { transform: rotate(180deg); }
+
+/* Detalhes expandíveis */
+.db-student-details {
+  display: none;
+  padding: 1.2rem;
+  background: #090d18;
+  border-top: 1px solid var(--db-border);
+  animation: slideDown 0.25s ease forwards;
+}
+
+.db-student-card.open .db-student-details { display: block; }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.db-detail-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.db-detail-metric { text-align: center; }
+.db-detail-metric-label {
+  font-size: 0.62rem; color: var(--db-muted);
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.db-detail-metric-value {
+  font-size: 1.2rem; font-weight: 700; color: var(--ring-color);
+}
+
+.db-student-meta {
+  font-size: 0.75rem; color: var(--db-muted);
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--db-border);
+  line-height: 1.8;
+}
+
+.db-ai-insight {
+  background: rgba(139, 92, 246, 0.07);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  margin-top: 1rem;
+}
+
+.db-ai-insight-text { 
+  font-size: 0.82rem; 
+  color: #c084fc; 
+  line-height: 1.5; 
+  position: relative;
+  transition: max-height 0.3s ease;
+}
+
+.db-ai-insight-text.collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-height: 4.5rem; /* ~3 linhas */
+}
+
+.db-btn-show-more {
+  background: none;
+  border: none;
+  color: #8b5cf6;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 4px;
+  display: block;
+  transition: color 0.15s;
+}
+
+.db-btn-show-more:hover { color: #c084fc; text-decoration: underline; }
+
+.db-student-errors { margin-top: 0.9rem; }
+.db-student-errors-title {
+  font-size: 0.68rem; color: var(--db-muted);
+  text-transform: uppercase; letter-spacing: 0.4px;
+  margin-bottom: 0.5rem;
+}
+
+.db-student-error-tags {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+
+.db-no-errors {
+  font-size: 0.75rem; color: var(--db-muted);
+  padding: 4px 10px;
+  border: 1px dashed var(--db-border);
+  border-radius: 6px;
+  display: inline-block;
+}
+
+/* ════════════════════════ GERENCIAMENTO ════════════════════════ */
+#db-manage {
+  background: var(--db-bg-card);
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+#db-manage-title {
+  font-size: 0.85rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--db-muted); margin-bottom: 1rem;
+}
+
+/* Select estilizado */
+#db-student-select {
+  width: 100%;
+  background: #060a10;
+  border: 1px solid var(--db-border);
+  color: var(--db-text);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  font-family: 'Sora', sans-serif;
+  appearance: none;
+  cursor: pointer;
+  transition: var(--db-transition);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%238b949e'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  margin-bottom: 1rem;
+}
+
+#db-student-select:focus {
+  outline: none;
+  border-color: var(--ring-color);
+  box-shadow: 0 0 0 3px var(--ring-color-dim);
+}
+
+/* Botão de remover */
+#btn-remover-aluno {
+  background: var(--ring-color);
+  border: none;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Sora', sans-serif;
+  cursor: pointer;
+  transition: var(--db-transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#btn-remover-aluno:hover {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+#btn-remover-aluno:disabled {
+  opacity: 0.4;
+  cursor: default;
+  filter: none;
+  transform: none;
+}
+
+#db-manage-feedback {
+  margin-top: 0.8rem;
+  font-size: 0.82rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  display: none;
+}
+
+#db-manage-feedback.success {
+  background: rgba(74,222,128,0.1);
+  border: 1px solid rgba(74,222,128,0.3);
+  color: #4ade80;
+  display: block;
+}
+
+#db-manage-feedback.error {
+  background: rgba(224,92,42,0.1);
+  border: 1px solid rgba(255,122,92,0.3);
+  color: #ff7a5c;
+  display: block;
+}
+
+/* ════════════════════════ MODAL DE ERROS ════════════════════════ */
+#db-error-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  align-items: center;
+  justify-content: center;
+}
+
+#db-error-modal.show { display: flex; }
+
+#db-error-modal-content {
+  background: #0d131f;
+  border: 1.5px solid rgba(139, 92, 246, 0.5);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 640px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modalIn 0.3s cubic-bezier(0.19,1,0.22,1);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.9), 0 0 30px rgba(139,92,246,0.2);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(-40px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#db-error-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255,122,92,0.2);
+}
+
+#db-error-modal-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #ff8e73;
+}
+
+#btn-fechar-modal {
+  background: rgba(255,255,255,0.05);
+  border: none;
+  border-radius: 50%;
+  color: var(--db-muted);
+  font-size: 1.3rem;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--db-transition);
+  line-height: 1;
+}
+
+#btn-fechar-modal:hover {
+  background: rgba(255,122,92,0.2);
+  color: #ff7a5c;
+  transform: scale(1.05);
+}
+
+.db-error-item {
+  background: rgba(224, 92, 42, 0.08);
+  border: 1px solid rgba(255,122,92,0.25);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.db-error-item-student {
+  font-weight: 600;
+  color: #ff7a5c;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.db-error-item-context {
+  font-size: 0.8rem;
+  color: #c084fc;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.db-error-item-ts {
+  font-size: 0.65rem;
+  color: var(--db-muted);
+  margin-top: 0.5rem;
+}
+
+/* ════════════════════════ ANIMAÇÕES & MISC ════════════════════════ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.db-metric-card { animation: fadeUp 0.35s ease forwards; }
+.db-metric-card:nth-child(1) { animation-delay: 0.05s; }
+.db-metric-card:nth-child(2) { animation-delay: 0.10s; }
+.db-metric-card:nth-child(3) { animation-delay: 0.15s; }
+.db-metric-card:nth-child(4) { animation-delay: 0.20s; }
+
+@media (max-width: 768px) {
+  #db-root { padding: 1rem; }
+  #db-metrics { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  #db-global-stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 480px) {
+  #db-metrics { grid-template-columns: 1fr; }
+  .db-student-name { font-size: 0.85rem; }
+}
+</style>
+</head>
+<body>
+
+<div id="db-root">
+
+  <!-- ── HEADER ── -->
+  <div id="db-header">
+    <span id="db-header-icon">📊</span>
+    <h1 id="db-header-title">Tati's Dashboard</h1>
+  </div>
+
+  <!-- ── MÉTRICAS GLOBAIS ── -->
+  <div id="db-metrics">
+    <!-- Preenchido pelo JS via METRICS_JSON -->
+  </div>
+
+  <!-- ── PAINEL DE INSIGHTS / ERROS ── -->
+  <div id="db-insights">
+    <div id="db-insights-title">📚 Insights da Turma</div>
+    <div id="db-insights-errors-title">Erros mais recorrentes (clique para ver detalhes):</div>
+    <div id="db-error-tags">
+      <!-- Preenchido pelo JS via ERRORS_JSON -->
+    </div>
+    <div id="db-global-stats">
+      <!-- Preenchido pelo JS via GLOBAL_STATS_JSON -->
+    </div>
+  </div>
+
+  <!-- ── LISTA DE ALUNOS ── -->
+  <div id="db-students-section">
+    <div id="db-students-title">👥 Clique no aluno para ver detalhes</div>
+    <div id="db-students-list">
+      <!-- Preenchido pelo JS via STUDENTS_JSON -->
+    </div>
+  </div>
+
+  <!-- ── GERENCIAMENTO DE ALUNOS ── -->
+  <div id="db-manage">
+    <div id="db-manage-title">⚙️ Gerenciamento de Alunos</div>
+    <select id="db-student-select">
+      <option value="">Selecione um aluno...</option>
+      <!-- Preenchido pelo JS via STUDENTS_JSON -->
+    </select>
+    <button id="btn-remover-aluno" disabled>
+      <i class="fa-solid fa-trash"></i> Remover Aluno
+    </button>
+    <div id="db-manage-feedback"></div>
+  </div>
+
+</div>
+
+<!-- ── MODAL DE ERROS ── -->
+<div id="db-error-modal">
+  <div id="db-error-modal-content">
+    <div id="db-error-modal-header">
+      <span id="db-error-modal-title">Detalhes do Erro</span>
+      <button id="btn-fechar-modal" title="Fechar">×</button>
+    </div>
+    <div id="db-error-modal-body">
+      <!-- Preenchido pelo JS ao clicar em um erro -->
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+/* ── Dados injetados pelo Python ── */
+var METRICS      = {{METRICS_JSON}};
+var STUDENTS     = {{STUDENTS_JSON}};
+var ERRORS       = {{ERRORS_JSON}};
+var GLOBAL_STATS = {{GLOBAL_STATS_JSON}};
+var RING_COLOR   = {{RING_COLOR_JS}};
+var STR_AI_INSIGHT = "{{STR_AI_INSIGHT}}";
+var STR_READ_MORE  = "{{STR_READ_MORE}}";
+var STR_SHOW_LESS  = "{{STR_SHOW_LESS}}";
+
+/* ── Helpers ── */
+function el(id) { return document.getElementById(id); }
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Resize dinâmico do iframe ── */
+function updateFrameHeight() {
+  var h = document.documentElement.scrollHeight || document.body.scrollHeight;
+  window.parent.postMessage({ type: 'streamlit:setFrameHeight', value: h + 40 }, '*');
+}
+
+/* Observer para mudanças no DOM (expansão de cards, etc) */
+if (typeof MutationObserver !== 'undefined') {
+  var observer = new MutationObserver(function() {
+    updateFrameHeight();
+  });
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+}
+/* Também dispara em intervalos curtos nos primeiros segundos */
+[100, 300, 800, 1500, 3000].forEach(t => setTimeout(updateFrameHeight, t));
+
+/* ── Toggle Insight Read More ── */
+window.toggleInsight = function(btn) {
+  var p = btn.previousElementSibling;
+  var isColl = p.classList.toggle('collapsed');
+  btn.textContent = isColl ? STR_READ_MORE : STR_SHOW_LESS;
+  updateFrameHeight();
+};
+
+/* ══════════════════════ MÉTRICAS ══════════════════════ */
+function renderMetrics() {
+  var container = el('db-metrics');
+  container.innerHTML = METRICS.map(function(m) {
+    return '<div class="db-metric-card">' +
+      '<span class="db-metric-icon">' + m.icon + '</span>' +
+      '<p class="db-metric-value">' + m.value + '</p>' +
+      '<p class="db-metric-label">' + esc(m.label) + '</p>' +
+      '</div>';
+  }).join('');
+}
+
+/* ══════════════════════ TAGS DE ERRO ══════════════════════ */
+function renderErrorTags() {
+  var container = el('db-error-tags');
+  var keys = Object.keys(ERRORS).slice(0, 8);
+  if (!keys.length) {
+    container.innerHTML = '<span style="color:#4a5a6a;font-size:.8rem;">Nenhum erro detectado ainda.</span>';
+    return;
+  }
+  container.innerHTML = keys.map(function(type) {
+    var count = ERRORS[type].length;
+    return '<div class="db-error-tag" data-type="' + esc(type) + '">' +
+      esc(type) +
+      '<span class="db-error-tag-count">' + count + 'x</span>' +
+      '</div>';
+  }).join('');
+
+  container.querySelectorAll('.db-error-tag').forEach(function(tag) {
+    tag.addEventListener('click', function() {
+      openErrorModal(this.dataset.type);
+    });
+  });
+}
+
+/* ══════════════════════ STATS GLOBAIS ══════════════════════ */
+function renderGlobalStats() {
+  var container = el('db-global-stats');
+  container.innerHTML = GLOBAL_STATS.map(function(s) {
+    return '<div>' +
+      '<div class="db-global-stat-label">' + esc(s.label) + '</div>' +
+      '<div class="db-global-stat-value">' + s.value + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+/* ══════════════════════ CARDS DE ALUNOS ══════════════════════ */
+function renderStudents() {
+  var list    = el('db-students-list');
+  var select  = el('db-student-select');
+
+  if (!STUDENTS.length) {
+    list.innerHTML = '<p style="color:#4a5a6a;padding:1rem;">Nenhum aluno cadastrado ainda.</p>';
+    return;
+  }
+
+  /* Ordena por total_messages decrescente */
+  var sorted = STUDENTS.slice().sort(function(a,b){ return (b.msgs||0) - (a.msgs||0); });
+
+  list.innerHTML = sorted.map(function(s, i) {
+    var health   = s.health || 'healthy';
+    var badges   = {
+      critical: { cls: 'db-status-critical', txt: '🔴 Crítico',  cardCls: 'db-urgent' },
+      warning:  { cls: 'db-status-warning',  txt: '🟡 Atenção',  cardCls: 'db-warning-card' },
+      healthy:  { cls: 'db-status-healthy',  txt: '🟢 Saudável', cardCls: '' }
+    };
+    var b = badges[health] || badges.healthy;
+    var topCls = (s.msgs > 100) ? 'db-top-card' : '';
+
+    /* Tags de erro do aluno */
+    var errTags = '';
+    if (s.errors && s.errors.length) {
+      var byType = {};
+      s.errors.forEach(function(e) {
+        byType[e.type] = (byType[e.type] || 0) + 1;
+      });
+      errTags = Object.keys(byType).map(function(type) {
+        return '<div class="db-error-tag" style="font-size:.72rem;" data-type="' + esc(type) + '">' +
+          esc(type) + '<span class="db-error-tag-count">' + byType[type] + 'x</span>' +
+          '</div>';
+      }).join('');
+    }
+
+    var insightHtml = '';
+    if (s.insight) {
+      var isLong = s.insight.length > 140;
+      insightHtml = '<div class="db-ai-insight">' +
+        '<p class="db-ai-insight-label">' + STR_AI_INSIGHT + '</p>' +
+        '<p class="db-ai-insight-text ' + (isLong ? 'collapsed' : '') + '">' + esc(s.insight) + '</p>' +
+        (isLong ? '<button class="db-btn-show-more" onclick="toggleInsight(this)">' + STR_READ_MORE + '</button>' : '') +
+        '</div>';
+    }
+
+    return '<div class="db-student-card ' + b.cardCls + ' ' + topCls + '" id="student-card-' + i + '">' +
+      '<div class="db-student-header">' +
+        '<span class="db-student-name">' + esc(s.name || s.username) + '</span>' +
+        '<span class="db-badge db-badge-level">' + esc(s.level || '—') + '</span>' +
+        '<span class="db-status-badge ' + b.cls + '">' + b.txt + '</span>' +
+        '<span class="db-chevron"><i class="fa-solid fa-chevron-down"></i></span>' +
+      '</div>' +
+      '<div class="db-student-details">' +
+        '<div class="db-detail-metrics">' +
+          '<div class="db-detail-metric">' +
+            '<div class="db-detail-metric-label">Mensagens</div>' +
+            '<div class="db-detail-metric-value">' + (s.msgs || 0) + '</div>' +
+          '</div>' +
+          '<div class="db-detail-metric">' +
+            '<div class="db-detail-metric-label">Conversas</div>' +
+            '<div class="db-detail-metric-value">' + (s.convs || 0) + '</div>' +
+          '</div>' +
+          '<div class="db-detail-metric">' +
+            '<div class="db-detail-metric-label">Correções</div>' +
+            '<div class="db-detail-metric-value">' + (s.fixes || 0) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="db-student-meta">' +
+          '<strong>Foco:</strong> ' + esc(s.focus || '—') + '<br>' +
+          '<strong>Última atividade:</strong> ' + esc((s.last || '—').substring(0,16)) +
+        '</div>' +
+        insightHtml +
+        '<div class="db-student-errors">' +
+          '<div class="db-student-errors-title">Erros Específicos</div>' +
+          '<div class="db-student-error-tags">' +
+            (errTags || '<span class="db-no-errors">Nenhum erro recente</span>') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  /* Expander — click para abrir/fechar */
+  list.querySelectorAll('.db-student-header').forEach(function(header) {
+    header.addEventListener('click', function() {
+      this.closest('.db-student-card').classList.toggle('open');
+      /* Notifica o Streamlit para ajustar a altura do iframe */
+      updateFrameHeight();
+    });
+  });
+
+  /* Clique nas tags de erro dos alunos */
+  list.querySelectorAll('.db-error-tag').forEach(function(tag) {
+    tag.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openErrorModal(this.dataset.type);
+    });
+  });
+
+  /* Preenche o select de gerenciamento */
+  select.innerHTML = '<option value="">Selecione um aluno...</option>' +
+    sorted.map(function(s) {
+      return '<option value="' + esc(s.username) + '">' + esc(s.name || s.username) + ' (' + esc(s.username) + ')</option>';
+    }).join('');
+}
+
+/* ══════════════════════ MODAL DE ERROS ══════════════════════ */
+function openErrorModal(type) {
+  var modal = el('db-error-modal');
+  var title = el('db-error-modal-title');
+  var body  = el('db-error-modal-body');
+
+  title.textContent = type;
+
+  var list = ERRORS[type] || [];
+  if (!list.length) {
+    body.innerHTML = '<p style="color:#4a5a6a;font-size:.85rem;">Nenhum exemplo registrado.</p>';
+  } else {
+    body.innerHTML = list.slice(0, 10).map(function(err) {
+      return '<div class="db-error-item">' +
+        '<div class="db-error-item-student">👤 ' + esc(err.student || 'Desconhecido') + '</div>' +
+        '<div class="db-error-item-context">"' + esc((err.context || '').substring(0, 120)) + '"</div>' +
+        '<div class="db-error-item-ts">📅 ' + esc(err.timestamp || '—') + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  modal.classList.add('show');
+}
+
+function closeErrorModal() {
+  el('db-error-modal').classList.remove('show');
+}
+
+el('btn-fechar-modal').addEventListener('click', closeErrorModal);
+el('db-error-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeErrorModal();
+});
+
+/* Também expõe para o parent (compat. com código legado) */
+try { window.parent.closeErrorModal = closeErrorModal; } catch(e) {}
+
+/* ══════════════════════ GERENCIAMENTO ══════════════════════ */
+var selectEl = el('db-student-select');
+var removeBtn = el('btn-remover-aluno');
+var feedback  = el('db-manage-feedback');
+
+selectEl.addEventListener('change', function() {
+  removeBtn.disabled = !this.value;
+});
+
+removeBtn.addEventListener('click', function() {
+  var username = selectEl.value;
+  if (!username) return;
+  if (!confirm('Tem certeza que deseja remover o aluno "' + username + '"? Esta ação é irreversível.')) return;
+
+  removeBtn.disabled = true;
+  removeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Removendo...';
+
+  /* Envia postMessage para o Streamlit parent fazer a deleção no banco */
+  window.parent.postMessage({ action: 'delete_student', username: username }, '*');
+});
+
+/* Escuta resposta do Streamlit via postMessage */
+window.addEventListener('message', function(e) {
+  if (!e.data || e.data.target !== 'dashboard') return;
+  if (e.data.action === 'delete_result') {
+    if (e.data.success) {
+      feedback.className = 'success';
+      feedback.textContent = '✅ Aluno "' + e.data.username + '" removido com sucesso!';
+      /* Remove da lista visual */
+      STUDENTS = STUDENTS.filter(function(s) { return s.username !== e.data.username; });
+      renderStudents();
+      renderMetrics(); /* atualiza contagem */
+    } else {
+      feedback.className = 'error';
+      feedback.textContent = '❌ Erro ao remover aluno. Verifique o console.';
+    }
+    removeBtn.disabled = false;
+    removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Remover Aluno';
+  }
+});
+
+/* ══════════════════════ INIT ══════════════════════ */
+renderMetrics();
+renderErrorTags();
+renderGlobalStats();
+renderStudents();
+
+})();
+</script>
+
+</body>
+</html>

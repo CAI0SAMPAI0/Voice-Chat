@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings Template</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap');
+
+    :root {
+      --db-bg: #060a10;
+      --db-bg-card: #0d1420;
+      --db-border: #1a2535;
+      --db-text: #e6edf3;
+      --db-muted: #8b949e;
+      --ring-color: {{RING_COLOR}};
+      --ring-color-dim: {{RING_COLOR_DIM}};
+      --db-radius: 12px;
+      --db-transition: all 0.2s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--db-bg);
+      font-family: 'Sora', -apple-system, sans-serif;
+      color: var(--db-text);
+      min-height: 100%;
+      overflow: visible;
+      padding: 1rem;
+    }
+
+    .st-settings-container {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* ════════════════════════ SEÇÕES ════════════════════════ */
+    .st-section {
+      background: var(--db-bg-card);
+      border: 1px solid var(--db-border);
+      border-radius: var(--db-radius);
+      padding: 1.5rem;
+    }
+
+    .st-section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1.2rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .st-section-title i { color: var(--ring-color); opacity: 0.8; }
+
+    .st-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.2rem;
+    }
+
+    /* ════════════════════════ INPUTS ════════════════════════ */
+    .st-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .st-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--db-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .st-input, .st-select {
+      background: #090d18;
+      border: 1px solid var(--db-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fff;
+      font-family: 'Sora', sans-serif;
+      font-size: 0.85rem;
+      width: 100%;
+      transition: var(--db-transition);
+    }
+
+    .st-form-group { position: relative; }
+    .st-pw-eye {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      color: var(--db-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: color 0.15s;
+    }
+    .st-pw-eye:hover { color: var(--ring-color); }
+
+    .st-input:focus, .st-select:focus {
+      outline: none;
+      border-color: var(--ring-color);
+      box-shadow: 0 0 0 3px var(--ring-color-dim);
+    }
+
+    .st-input::placeholder { color: #4a5a6a; }
+
+    .st-username-readonly {
+      font-size: 0.8rem;
+      color: var(--db-muted);
+      margin-top: 4px;
+    }
+
+    .st-username-readonly code {
+      background: #111b2d;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--ring-color);
+    }
+
+    /* ════════════════════════ BOTÕES ════════════════════════ */
+    .st-btn {
+      background: var(--ring-color);
+      border: none;
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: 'Sora', sans-serif;
+      cursor: pointer;
+      transition: var(--db-transition);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 1rem;
+    }
+
+    .st-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .st-btn:active { transform: translateY(0); }
+
+    .st-btn-secondary {
+      background: #1a2535;
+      color: #8b949e;
+    }
+
+    .st-btn-danger {
+      background: rgba(224, 92, 42, 0.15);
+      color: #ff7a5c;
+      border: 1px solid rgba(224, 92, 42, 0.3);
+    }
+
+    /* ════════════════════════ APARÊNCIA ════════════════════════ */
+    .st-color-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #090d18;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--db-border);
+    }
+
+    .st-color-input {
+      -webkit-appearance: none;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      background: none;
+    }
+    .st-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+    .st-color-input::-webkit-color-swatch { border: none; border-radius: 50%; border: 2px solid rgba(255,255,255,0.1); }
+
+    .st-preview {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #090d18;
+      border-radius: 12px;
+      border: 1px dashed var(--db-border);
+    }
+
+    .st-preview-bubbles {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .st-bubble {
+      padding: 8px 14px;
+      border-radius: 16px;
+      font-size: 0.75rem;
+      max-width: 60%;
+    }
+
+    .st-bubble-user { align-self: flex-end; border-bottom-right-radius: 4px; color: #fff; }
+    .st-bubble-ia { align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--db-border); color: #e6edf3; }
+
+    /* ════════════════════════ FOTO DE PERFIL ════════════════════════ */
+    .st-photo-area {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .st-photo-display {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      flex-shrink: 0;
+    }
+
+    .st-photo-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #131c2a;
+      position: relative;
+      z-index: 2;
+    }
+
+    .st-photo-ring {
+      position: absolute;
+      top: -4px; left: -4px; right: -4px; bottom: -4px;
+      border-radius: 50%;
+      border: 3px solid var(--ring-color);
+      box-shadow: 0 0 15px var(--ring-color-dim);
+      z-index: 1;
+      animation: ring-glow 3s infinite alternate;
+    }
+
+    @keyframes ring-glow {
+      from { box-shadow: 0 0 5px var(--ring-color-dim); opacity: 0.6; }
+      to { box-shadow: 0 0 20px var(--ring-color); opacity: 1; }
+    }
+
+    .st-photo-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .st-photo-hint {
+      font-size: 0.72rem;
+      color: var(--db-muted);
+      margin-bottom: 4px;
+    }
+
+    hr { border: none; border-top: 1px solid var(--db-border); margin: 1.5rem 0; }
+  </style>
+</head>
+<body>
+
+<div class="st-settings-container">
+
+  <!-- 0. Foto de Perfil -->
+  <div class="st-section">
+    <div class="st-section-title"><i class="fa-solid fa-camera"></i> {{STR_SECTION_PHOTO}}</div>
+    <div class="st-photo-area">
+      <div class="st-photo-display">
+        <img src="{{CURRENT_AVATAR}}" class="st-photo-img" id="img-avatar">
+        <div class="st-photo-ring"></div>
+      </div>
+      <div class="st-photo-actions">
+        <p class="st-photo-hint">{{STR_PHOTO_HINT}}</p>
+        <div style="display:flex; gap:10px;">
+          <input type="file" id="inp-photo" style="display:none" accept="image/*" onchange="uploadPhoto(this)">
+          <button class="st-btn" style="margin-top:0;" onclick="document.getElementById('inp-photo').click()">
+            <i class="fa-solid fa-cloud-arrow-up"></i> {{STR_CHANGE_PHOTO}}
+          </button>
+          <button class="st-btn st-btn-danger" style="margin-top:0;" onclick="removePhoto()">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. Dados Pessoais -->
+  <div class="st-section">
+    <div class="st-section-title"><i class="fa-solid fa-user-circle"></i> {{STR_SECTION_PERSONAL}}</div>
+    <div class="st-grid">
+      <div class="st-form-group">
+        <label class="st-label">{{STR_NAME}}</label>
+        <input type="text" id="inp-name" class="st-input" value="{{USER_NAME}}">
+      </div>
+      <div class="st-form-group">
+        <label class="st-label">{{STR_EMAIL}}</label>
+        <input type="email" id="inp-email" class="st-input" value="{{USER_EMAIL}}">
+      </div>
+      <div class="st-form-group">
+        <label class="st-label">{{STR_USERNAME_LABEL}}</label>
+        <input type="text" id="inp-username" class="st-input" value="{{USERNAME}}">
+      </div>
+    </div>
+    <button class="st-btn" onclick="savePersonal()">
+      <i class="fa-solid fa-save"></i> {{STR_SAVE}}
+    </button>
+  </div>
+
+  <!-- 2. Senha -->
+  <div class="st-section">
+    <div class="st-section-title"><i class="fa-solid fa-lock"></i> {{STR_SECTION_PASSWORD}}</div>
+    <div class="st-grid">
+      <div class="st-form-group">
+        <label class="st-label">{{STR_NEW_PASSWORD}}</label>
+        <input type="password" id="inp-newpw" class="st-input">
+        <i class="fa-solid fa-eye st-pw-eye" onclick="togglePw('inp-newpw', this)"></i>
+      </div>
+      <div class="st-form-group">
+        <label class="st-label">{{STR_CONF_PASSWORD}}</label>
+        <input type="password" id="inp-confpw" class="st-input">
+        <i class="fa-solid fa-eye st-pw-eye" onclick="togglePw('inp-confpw', this)"></i>
+      </div>
+    </div>
+    <button class="st-btn" onclick="savePassword()">
+      <i class="fa-solid fa-key"></i> {{STR_CHANGE_PASSWORD}}
+    </button>
+  </div>
+
+  <!-- 3. Perfil de Aprendizado -->
+  <div class="st-section">
+    <div class="st-section-title"><i class="fa-solid fa-graduation-cap"></i> {{STR_SECTION_LEARNING}}</div>
+    <div class="st-grid">
+      <div class="st-form-group">
+        <label class="st-label">{{STR_LEVEL}}</label>
+        <select id="sel-level" class="st-select">
+          <option value="Beginner">Beginner</option>
+          <option value="Pre-Intermediate">Pre-Intermediate</option>
+          <option value="Intermediate">Intermediate</option>
+          <option value="Advanced">Advanced</option>
+          <option value="Business English">Business English</option>
+        </select>
+      </div>
+      <div class="st-form-group">
+        <label class="st-label">{{STR_FOCUS}}</label>
+        <select id="sel-focus" class="st-select">
+          <option value="General Conversation">General Conversation</option>
+          <option value="Business English">Business English</option>
+          <option value="Travel">Travel</option>
+          <option value="Academic">Academic</option>
+          <option value="Pronunciation">Pronunciation</option>
+          <option value="Grammar">Grammar</option>
+          <option value="Vocabulary">Vocabulary</option>
+          <option value="Exam Prep">Exam Prep</option>
+        </select>
+      </div>
+    </div>
+    <button class="st-btn" onclick="saveLearning()">
+      <i class="fa-solid fa-save"></i> {{STR_SAVE}}
+    </button>
+  </div>
+
+  <!-- 4. Idioma e Voz -->
+  <div class="st-section">
+    <div class="st-section-title"><i class="fa-solid fa-globe"></i> {{STR_SECTION_LANG}}</div>
+    <div class="st-grid">
+      <div class="st-form-group">
+        <label class="st-label">{{STR_INTERFACE_LANG}}</label>
+        <select id="sel-lang" class="st-select">
+          <option value="pt-BR">Português (BR)</option>
+          <option value="en-US">English (US)</option>
+          <option value="en-UK">English (UK)</option>
+        </select>
+      </div>
+      <div class="st-form-group">
+        <label class="st-label">{{STR_VOICE_LANG}}</label>
+        <select id="sel-speech" class="st-select">
+          <option value="pt-BR">Português (BR)</option>
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+        </select>
+      </div>
+    </div>
+    <button class="st-btn" onclick="saveLanguage()">
+      <i class="fa-solid fa-save"></i> {{STR_SAVE}}
+    </button>
+  </div>
+
+  <!-- 5. Aparência -->
+  <div class="st-section">
+    <div class="st-section-title"><i class="fa-solid fa-palette"></i> {{STR_SECTION_APPEARANCE}}</div>
+    <p style="font-size: 0.72rem; color: var(--db-muted); margin-bottom: 1rem;">{{STR_APPEARANCE_HINT}}</p>
+    
+    <div class="st-grid">
+      <div class="st-color-row">
+        <input type="color" id="cp-ring" class="st-color-input" value="{{RING_COLOR}}" oninput="updatePreview()">
+        <label class="st-label">{{STR_RING_COLOR}}</label>
+      </div>
+      <div class="st-color-row">
+        <input type="color" id="cp-user" class="st-color-input" value="{{USER_BUBBLE_COLOR}}" oninput="updatePreview()">
+        <label class="st-label">{{STR_USER_BUBBLE_COLOR}}</label>
+      </div>
+      <div class="st-color-row">
+        <input type="color" id="cp-bot" class="st-color-input" value="{{BOT_BUBBLE_COLOR}}" oninput="updatePreview()">
+        <label class="st-label">{{STR_BOT_BUBBLE_COLOR}}</label>
+      </div>
+    </div>
+
+    <div class="st-preview">
+      <div class="st-preview-avatar">
+        <div id="prev-ring" class="st-preview-ring" style="outline: 3px solid {{RING_COLOR}};"></div>
+        <span style="font-size: 0.65rem; color: var(--db-muted);">Avatar Preview</span>
+      </div>
+      <div class="st-preview-bubbles">
+        <div id="prev-user" class="st-bubble st-bubble-user" style="background: {{USER_BUBBLE_COLOR}};">Você</div>
+        <div id="prev-bot" class="st-bubble st-bubble-ia" style="background: {{BOT_BUBBLE_COLOR}};">Professora</div>
+      </div>
+    </div>
+
+    <button class="st-btn" onclick="saveAppearance()">
+      <i class="fa-solid fa-save"></i> {{STR_SAVE}}
+    </button>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  const el = id => document.getElementById(id);
+
+  // Inicializa Selects
+  el('sel-level').value  = "{{USER_LEVEL}}";
+  el('sel-focus').value  = "{{USER_FOCUS}}";
+  el('sel-lang').value   = "{{INTERFACE_LANG}}";
+  el('sel-speech').value = "{{SPEECH_LANG}}";
+
+  // Envia postMessage ao Python
+  function notify(action, data) {
+    window.parent.postMessage({ action, data }, '*');
+  }
+
+  // Métodos Globais
+  window.updatePreview = function() {
+    const ring = el('cp-ring').value;
+    const user = el('cp-user').value;
+    const bot  = el('cp-bot').value;
+
+    el('prev-ring').style.outline = '3px solid ' + ring;
+    el('prev-user').style.background = user;
+    el('prev-bot').style.background = bot;
+  };
+
+  window.togglePw = function(id, btn) {
+    const inp = el(id);
+    if(inp.type === 'password') {
+      inp.type = 'text';
+      btn.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+      inp.type = 'password';
+      btn.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+  };
+
+  window.savePersonal = function() {
+    notify('save_personal', {
+      name: el('inp-name').value,
+      email: el('inp-email').value,
+      new_username: el('inp-username').value
+    });
+  };
+
+  window.savePassword = function() {
+    const nw = el('inp-newpw').value;
+    const cf = el('inp-confpw').value;
+    if(!nw || !cf) return; // Streamlit lidará com validação fina e toast
+    notify('save_password', { new_pw: nw, conf_pw: cf });
+    el('inp-newpw').value = '';
+    el('inp-confpw').value = '';
+  };
+
+  window.saveLearning = function() {
+    notify('save_learning', {
+      level: el('sel-level').value,
+      focus: el('sel-focus').value
+    });
+  };
+
+  window.saveLanguage = function() {
+    notify('save_language', {
+      language: el('sel-lang').value,
+      speech_lang: el('sel-speech').value
+    });
+  };
+
+  window.saveAppearance = function() {
+    notify('save_appearance', {
+      ring_color: el('cp-ring').value,
+      user_bubble_color: el('cp-user').value,
+      bot_bubble_color: el('cp-bot').value
+    });
+  };
+
+  window.uploadPhoto = function(input) {
+    if(!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      notify('save_photo', { 
+        b64: e.target.result,
+        name: file.name
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.removePhoto = function() {
+    if(confirm('Deseja remover sua foto de perfil?')) {
+      notify('remove_photo', {});
+    }
+  };
+
+  // Resize dinâmico
+  function updateFrameHeight() {
+    var h = document.documentElement.scrollHeight || document.body.scrollHeight;
+    window.parent.postMessage({ type: 'streamlit:setFrameHeight', value: h + 40 }, '*');
+  }
+  
+  if (typeof MutationObserver !== 'undefined') {
+    var obs = new MutationObserver(updateFrameHeight);
+    obs.observe(document.body, { childList: true, subtree: true, attributes: true });
+  }
+  [100, 300, 800, 1500, 3000].forEach(t => setTimeout(updateFrameHeight, t));
+
+})();
+</script>
+</body>
+</html>

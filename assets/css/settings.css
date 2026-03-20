@@ -1,0 +1,303 @@
+/* ═══════════════════════════════════════════════════════════════
+   settings.css — Tela de configurações do usuário
+   ───────────────────────────────────────────────────────────────
+   REGRA: ZERO seletores quebradiços neste arquivo.
+
+   Seletores REMOVIDOS e por quê:
+   ──────────────────────────────
+   ❌ div[class="st-emotion-cache-137jl7i ey36t7e0"]
+      Hash gerado pelo Streamlit muda a CADA versão. Era a causa
+      raiz do layout da foto de perfil quebrar após updates.
+      Substituído por: .set-avatar-col (classe semântica no Python).
+
+   ❌ div[style="align-self:flex-end;background:rgb(145,35,36)..."]
+      Seletor de atributo style com valor exato. Funcionava apenas
+      se o Python gerasse exatamente aquele CSS inline, com aquelas
+      cores, naquela ordem. Além disso, margin-right:659px é um
+      valor absoluto que quebra em qualquer tela diferente da que
+      foi usada para "ajustar no olho".
+      Substituído por: .set-bubble-preview e .set-bubble-user/bot.
+
+   ❌ div[style="align-self:flex-start;background:rgb(26,31,46)..."]
+      Mesmo problema + margin-left:685px + margin-top:-40px.
+      Substituído por: .set-bubble-bot.
+
+   ❌ span[style="font-size:12px;"]
+      Seletor global — pegava QUALQUER span no app com font-size:12px
+      inline. Afetava componentes aleatórios em outras páginas.
+      Substituído por: .set-color-label (classe no Python).
+
+   O que settings.py precisa emitir (veja o arquivo Python junto):
+   ───────────────────────────────────────────────────────────────
+   Classes semânticas usadas pelo Python:
+     .set-page-title      — título principal "⚙️ Configurações"
+     .set-section-title   — subtítulo de seção ("Foto de Perfil" etc)
+     .set-divider         — <hr> entre seções
+     .set-hint            — texto de dica abaixo de um campo
+     .set-username-row    — linha com o username readonly
+     .set-avatar-col      — coluna que contém o círculo de avatar
+     .set-color-label     — label dos color pickers ("anel", etc)
+     .set-bubble-preview  — container do preview de aparência
+     .set-bubble-user     — bolha "Você" no preview
+     .set-bubble-bot      — bolha "Professora" no preview
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   ESTRUTURA DA PÁGINA
+   ═══════════════════════════════════════════════════════════════ */
+
+.set-page-title {
+  font-size:   1.4rem;
+  font-weight: 700;
+  color:       var(--text-primary);
+  margin:      0 0 1.2rem;
+}
+
+.set-section-title {
+  font-size:   1rem;
+  font-weight: 600;
+  color:       var(--text-primary);
+  margin:      1.2rem 0 0.6rem;
+}
+
+.set-divider {
+  border:     none;
+  border-top: 1px solid var(--border-subtle);
+  margin:     1.2rem 0;
+}
+
+.set-hint {
+  font-size: 0.75rem;
+  color:     var(--text-muted);
+  margin:    -6px 0 12px;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SEÇÃO: FOTO DE PERFIL
+   ═══════════════════════════════════════════════════════════════ */
+
+/*
+ * .set-avatar-col envolve o círculo de avatar na coluna da esquerda.
+ * Substitui o seletor com hash st-emotion-cache-*.
+ * O Python deve emitir: st.markdown("<div class='set-avatar-col'>")
+ */
+.set-avatar-col {
+  display:         flex;
+  align-items:     flex-start;
+  justify-content: center;
+  padding-top:     4px;
+}
+
+/* Área de upload — ocupa o espaço disponível sem margin absurdo */
+div[data-testid="stFileUploaderDropzone"] {
+  width:  100% !important;
+  margin: 0    !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SEÇÃO: INFORMAÇÕES DA CONTA
+   ═══════════════════════════════════════════════════════════════ */
+
+.set-username-row {
+  font-size:   0.78rem;
+  color:       var(--text-muted);
+  margin:      -2px 0 12px;
+  line-height: 1.6;
+}
+
+.set-username-row code {
+  background:    var(--bg-input);
+  padding:       2px 7px;
+  border-radius: var(--radius-sm);
+  color:         var(--text-secondary);
+  font-size:     0.8rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SEÇÃO: APARÊNCIA — Preview de bolhas
+   ─────────────────────────────────────────────────────────────
+   Substituiu os seletores de atributo style com valores exatos
+   e os margin-right/left absurdos (659px, 685px).
+   O preview agora usa flexbox responsivo.
+   ═══════════════════════════════════════════════════════════════ */
+
+.set-bubble-preview {
+  display:     flex;
+  gap:         14px;
+  margin:      10px 0 16px;
+  align-items: center;
+  padding:     12px 14px;
+  background:  var(--bg-card);
+  border:      1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+/* Coluna do anel */
+.set-ring-preview {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            5px;
+  flex-shrink:    0;
+}
+
+.set-ring-circle {
+  width:         44px;
+  height:        44px;
+  border-radius: 50%;
+  background:    var(--bg-secondary);
+  /* outline e box-shadow são aplicados via style inline no Python
+     pois dependem da cor escolhida pelo usuário */
+}
+
+/* Label abaixo do anel */
+.set-color-label {
+  font-size: 0.6rem;
+  color:     var(--text-muted);
+}
+
+/* Coluna das bolhas */
+.set-bubbles-col {
+  display:        flex;
+  flex-direction: column;
+  gap:            7px;
+  flex:           1;
+  min-width:      0;
+}
+
+/* Bolha base */
+.set-bubble-user,
+.set-bubble-bot {
+  padding:        7px 14px;
+  border-radius:  16px;
+  font-size:      0.78rem;
+  max-width:      65%;
+  word-break:     break-word;
+  line-height:    1.4;
+}
+
+/* Bolha do aluno — alinhada à direita */
+.set-bubble-user {
+  align-self:                flex-end;
+  color:                     #fff;
+  border-bottom-right-radius: 4px;
+  /* background vem do style inline no Python (cor personalizada) */
+}
+
+/* Bolha da IA — alinhada à esquerda */
+.set-bubble-bot {
+  align-self:                flex-start;
+  color:                     var(--text-primary);
+  border:                    1px solid var(--border-medium);
+  border-bottom-left-radius: 4px;
+  /* background vem do style inline no Python (cor personalizada) */
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COLOR PICKERS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Espaçamento consistente entre os pickers */
+div[data-testid="stColorPickerBlock"] {
+  margin-bottom: 4px;
+}
+
+/* Label acima do color picker — usa a variável do tema */
+div[data-testid="stColorPickerBlock"] label,
+div[data-testid="stColorPickerBlock"] span {
+  color:     var(--text-secondary) !important;
+  font-size: 0.78rem              !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FORMULÁRIO DE SENHA
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Botão de salvar — padrão accent */
+.set-save-btn div[data-testid="stButton"] > button {
+  background: linear-gradient(135deg, var(--purple-dark), var(--purple-main)) !important;
+  border:     1px solid #7c4dcc !important;
+  color:      #fff !important;
+  box-shadow: var(--shadow-purple) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — Mobile first
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤1024px) ─────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .set-page-title    { font-size: 1.25rem; }
+  .set-section-title { font-size: 0.95rem; }
+
+  .set-bubble-user,
+  .set-bubble-bot { max-width: 70%; }
+}
+
+/* ── Mobile (≤768px) ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .set-page-title    { font-size: 1.15rem; margin-bottom: 1rem; }
+  .set-section-title { font-size: 0.9rem;  margin: 1rem 0 0.5rem; }
+  .set-divider       { margin: 0.9rem 0; }
+  .set-hint          { font-size: 0.72rem; }
+
+  /* Preview de bolhas: ocupa largura toda */
+  .set-bubble-preview { padding: 10px; gap: 10px; }
+
+  .set-bubble-user,
+  .set-bubble-bot { max-width: 80%; font-size: 0.75rem; }
+
+  /* Upload ocupa largura toda */
+  div[data-testid="stFileUploaderDropzone"] {
+    width:  100% !important;
+    margin: 0    !important;
+  }
+
+  /* Labels dos inputs */
+  div[data-testid="stWidgetLabel"] {
+    font-size: 0.78rem !important;
+  }
+}
+
+/* ── Mobile pequeno (≤480px) ──────────────────────────────────── */
+@media (max-width: 480px) {
+  .set-page-title    { font-size: 1.05rem; }
+  .set-section-title { font-size: 0.85rem; }
+  .set-hint          { font-size: 0.68rem; }
+  .set-username-row  { font-size: 0.7rem; }
+
+  .set-bubble-preview { padding: 8px; gap: 8px; }
+
+  .set-ring-circle {
+    width:  36px;
+    height: 36px;
+  }
+
+  .set-bubble-user,
+  .set-bubble-bot {
+    max-width:  88%;
+    font-size:  0.72rem;
+    padding:    5px 10px;
+  }
+
+  /* Color pickers empilhados */
+  div[data-testid="stColorPickerBlock"] {
+    width: 100%;
+  }
+}
+
+/* ── Mobile extra pequeno (≤360px) ───────────────────────────── */
+@media (max-width: 360px) {
+  .set-page-title { font-size: 0.95rem; }
+
+  .set-bubble-preview {
+    flex-direction: column;
+    align-items:    flex-start;
+  }
+
+  .set-ring-preview {
+    flex-direction: row;
+    align-items:    center;
+  }
+}

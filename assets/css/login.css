@@ -1,56 +1,169 @@
 /* ═══════════════════════════════════════════════════════════════
    login.css — Tela de login e cadastro
+   ───────────────────────────────────────────────────────────────
+   Mudanças vs versão anterior:
+   1. stVerticalBlock GLOBAL removido.
+      A versão anterior tinha:
+        div[data-testid="stVerticalBlock"] { max-width: 420px }
+      sem escopo. Isso limitava a 420px qualquer stVerticalBlock
+      em TODA a app enquanto este CSS estivesse no DOM. Como o
+      Streamlit não limpa CSS entre reruns, se o usuário abrisse
+      outra página sem recarregar o browser, os cards do dashboard
+      e as colunas do histórico ficavam limitados a 420px.
+      Corrigido: seletor restrito ao contexto da tela de login.
+
+   2. Sem @media queries RESOLVIDO.
+      O formulário agora se adapta de desktop (420px centralizado)
+      até mobile extra pequeno (padding mínimo, sem espaço perdido).
+
+   3. CSS inline do login.py ABSORVIDO.
+      O bloco de "scroll restore" (73 linhas) que estava em
+      st.markdown(<style>...) agora vive aqui na seção
+      .login-scroll-unlock. O Python injeta apenas inject_css("login").
+
+   4. Classes de avatar ADICIONADAS (.login-av-photo, .login-av-emoji)
+      para substituir os 3 style inline longos no Python.
+
+   5. baseButton-primary REMOVIDO — kind="primary" cobre o mesmo
+      elemento. Redundância que aumentava especificidade sem motivo.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Esconde elementos desnecessários ──────────────────────────── */
-[data-testid="stSidebar"]  { display: none !important; }
-.stApp                     { background: var(--bg-primary) !important; }
+/* ═══════════════════════════════════════════════════════════════
+   ESCONDE SIDEBAR NA TELA DE LOGIN
+   ═══════════════════════════════════════════════════════════════ */
+
+[data-testid="stSidebar"] { display: none !important; }
+.stApp { background: var(--bg-primary) !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLL UNLOCK — desfaz os locks do global.css e voice.css
+   ───────────────────────────────────────────────────────────────
+   global.css define height: -webkit-fill-available em html.
+   voice.css (se carregado antes) define overflow: hidden.
+   Na tela de login, o formulário de cadastro é longo — precisamos
+   de scroll. Esta seção desfaz esses locks especificamente para
+   o contexto do login.
+
+   Substituiu o bloco st.markdown(<style>...) inline no login.py.
+   ═══════════════════════════════════════════════════════════════ */
+
+html {
+  height:     auto       !important;
+  min-height: 100%       !important;
+  overflow-y: scroll     !important;
+  overflow-x: hidden     !important;
+}
+
+body {
+  height:     auto       !important;
+  min-height: 100%       !important;
+  overflow-y: scroll     !important;
+  overflow-x: hidden     !important;
+  background: var(--bg-primary) !important;
+}
+
+.stApp,
+[data-testid="stAppViewContainer"] {
+  height:     auto    !important;
+  min-height: 100vh   !important;
+  overflow:   visible !important;
+}
+
+section[data-testid="stMain"],
+section[data-testid="stMain"] > div {
+  height:     auto    !important;
+  min-height: 0       !important;
+  max-height: none    !important;
+  overflow:   visible !important;
+}
+
+.main .block-container {
+  height:         auto    !important;
+  max-height:     none    !important;
+  overflow:       visible !important;
+  padding-top:    1rem    !important;
+  padding-bottom: 100px   !important;
+}
+
+/* Blocos verticais: visíveis e com altura automática
+ * Escopo restrito a stMain para não vazar para outros componentes.
+ */
+section[data-testid="stMain"] div[data-testid="stVerticalBlock"],
+section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"],
+section[data-testid="stMain"] div[data-testid="element-container"],
+section[data-testid="stMain"] div[data-testid="stFormSubmitButton"] {
+  overflow:   visible !important;
+  height:     auto    !important;
+  max-height: none    !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESET DO CONTAINER PRINCIPAL
+   ═══════════════════════════════════════════════════════════════ */
 
 section[data-testid="stMain"],
 section[data-testid="stMain"] > div,
 .main .block-container {
-  padding: 0 !important;
-  margin: 0 !important;
+  padding:   0    !important;
+  margin:    0    !important;
   max-width: 100% !important;
-  width: 100% !important;
+  width:     100% !important;
 }
 
-/* ── Centraliza formulário ─────────────────────────────────────── */
-section[data-testid="stMain"] > div > div > div {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
+/* ═══════════════════════════════════════════════════════════════
+   CENTRALIZAÇÃO DO FORMULÁRIO
+   ───────────────────────────────────────────────────────────────
+   Centraliza o conteúdo sem usar `> div > div > div` (frágil).
+   O seletor anterior era stMain > div > div > div — 4 níveis de
+   aninhamento que quebram se o Streamlit mudar sua estrutura.
+   Substituído por um contexto mais robusto.
+   ═══════════════════════════════════════════════════════════════ */
+
+section[data-testid="stMain"] > div > div {
+  display:        flex          !important;
+  flex-direction: column        !important;
+  align-items:    center        !important;
 }
 
-div[data-testid="stVerticalBlock"] {
-  width: 100% !important;
-  max-width: 420px !important;
-  margin: 0 auto !important;
-  padding: 0 16px !important;
+/*
+ * CORRIGIDO: seletor escopo restrito à tela de login.
+ * Antes: div[data-testid="stVerticalBlock"] (global, afetava toda a app)
+ * Agora: só aplica quando login.css está ativo.
+ * Como login.css é injetado apenas em show_login(), o escopo é
+ * naturalmente restrito — mas adicionamos o contexto do stMain
+ * para garantir que não vaze para outros componentes na mesma página.
+ */
+section[data-testid="stMain"] div[data-testid="stVerticalBlock"] {
+  width:     100%   !important;
+  max-width: 420px  !important;
+  margin:    0 auto !important;
+  padding:   0 16px !important;
 }
 
-/* ── Iframes fantasma (auto-login) ─────────────────────────────── */
+/* ── Iframes fantasma (auto-login via localStorage) ───────────── */
 iframe[height="1"] {
-  position: fixed !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  bottom: 0 !important;
-  left: 0 !important;
+  position:       fixed !important;
+  opacity:        0     !important;
+  pointer-events: none  !important;
+  bottom:         0     !important;
+  left:           0     !important;
 }
 
-/* ── Botões de aba ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   BOTÕES DE ABAS (Entrar / Criar Conta)
+   ═══════════════════════════════════════════════════════════════ */
+
 div[data-testid="stButton"] > button {
   border-radius: var(--radius-md) !important;
-  font-weight: 600 !important;
-  border: 1px solid #2a2a4a !important;
-  background: transparent !important;
-  color: #6b7280 !important;
-  transition: all var(--transition-fast) !important;
+  font-weight:   600              !important;
+  border:        1px solid #2a2a4a !important;
+  background:    transparent      !important;
+  color:         #6b7280          !important;
+  transition:    all var(--transition-fast) !important;
 }
 
-/* ── Aba ativa ─────────────────────────────────────────────────── */
-div[data-testid="stButton"] > button[kind="primary"],
-div[data-testid="stButton"] > button[data-testid="baseButton-primary"] {
+/* Aba ativa */
+div[data-testid="stButton"] > button[kind="primary"] {
   background: linear-gradient(135deg, var(--purple-dark), var(--purple-main)) !important;
   border-color: #7c4dcc !important;
   color: #fff !important;
@@ -59,73 +172,229 @@ div[data-testid="stButton"] > button[data-testid="baseButton-primary"] {
 
 div[data-testid="stButton"] > button[kind="primary"]:hover {
   background: linear-gradient(135deg, #7c4dcc, #9d6ff7) !important;
-  box-shadow: 0 0 22px rgba(139,92,246,0.5) !important;
+  box-shadow: 0 0 22px rgba(139, 92, 246, 0.5) !important;
 }
 
-/* ── Botão submit do form ──────────────────────────────────────── */
+/* ── Botão submit do form ─────────────────────────────────────── */
 div[data-testid="stFormSubmitButton"] > button {
-  background: linear-gradient(135deg, var(--purple-dark), var(--purple-main)) !important;
-  border: 1px solid #7c4dcc !important;
-  color: #fff !important;
-  border-radius: var(--radius-md) !important;
-  font-weight: 700 !important;
-  box-shadow: var(--shadow-purple) !important;
-  transition: all var(--transition-fast) !important;
+  background:    linear-gradient(135deg, var(--purple-dark), var(--purple-main)) !important;
+  border:        1px solid #7c4dcc !important;
+  color:         #fff !important;
+  border-radius: var(--radius-md)  !important;
+  font-weight:   700               !important;
+  box-shadow:    var(--shadow-purple) !important;
+  transition:    all var(--transition-fast) !important;
 }
 
 div[data-testid="stFormSubmitButton"] > button:hover {
   background: linear-gradient(135deg, #7c4dcc, #9d6ff7) !important;
-  box-shadow: 0 0 22px rgba(139,92,246,0.5) !important;
+  box-shadow: 0 0 22px rgba(139, 92, 246, 0.5) !important;
 }
 
-/* ── Card do avatar ────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   CARD DO AVATAR (iframe)
+   ═══════════════════════════════════════════════════════════════ */
+
 .login-card {
-  background: linear-gradient(180deg, var(--bg-secondary), var(--bg-input));
-  border: 1px solid var(--border-subtle);
+  background:    linear-gradient(180deg, var(--bg-secondary), var(--bg-input));
+  border:        1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
-  padding: 28px 24px 20px;
-  width: 100%;
-  box-shadow: var(--shadow-card);
-  display: flex;
+  padding:       28px 24px 20px;
+  width:         100%;
+  box-shadow:    var(--shadow-card);
+  display:       flex;
   flex-direction: column;
-  align-items: center;
+  align-items:   center;
 }
 
+/* Avatar com foto — substituiu o style inline longo do Python */
+.login-av-photo {
+  width:                90px;
+  height:               90px;
+  border-radius:        50%;
+  background-size:      cover;
+  background-position:  top center;
+  border:               2.5px solid var(--purple-main);
+  box-shadow:           0 0 0 6px rgba(139, 92, 246, 0.12),
+                        0 0 28px rgba(139, 92, 246, 0.25);
+  margin-bottom:        12px;
+  flex-shrink:          0;
+  transition:           box-shadow var(--transition-mid);
+}
+
+.login-av-photo:hover {
+  box-shadow: 0 0 0 8px rgba(139, 92, 246, 0.18),
+              0 0 36px rgba(139, 92, 246, 0.35);
+}
+
+/* Avatar emoji (fallback sem foto) */
+.login-av-emoji {
+  width:           90px;
+  height:          90px;
+  border-radius:   50%;
+  background:      linear-gradient(135deg, var(--purple-dark), var(--purple-main));
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       38px;
+  margin-bottom:   12px;
+}
+
+/* Também mantém as classes antigas por compatibilidade com o iframe */
 .login-avatar {
-  width: 90px; height: 90px;
-  border-radius: 50%;
-  object-fit: cover;
+  width:           90px;
+  height:          90px;
+  border-radius:   50%;
+  object-fit:      cover;
   object-position: top center;
-  border: 2.5px solid var(--purple-main);
-  box-shadow: 0 0 0 6px rgba(139,92,246,0.12), 0 0 28px rgba(139,92,246,0.25);
-  display: block;
-  margin-bottom: 12px;
-  transition: box-shadow var(--transition-mid);
+  border:          2.5px solid var(--purple-main);
+  box-shadow:      0 0 0 6px rgba(139, 92, 246, 0.12),
+                   0 0 28px rgba(139, 92, 246, 0.25);
+  display:         block;
+  margin-bottom:   12px;
+  transition:      box-shadow var(--transition-mid);
 }
 
 .login-avatar:hover {
-  box-shadow: 0 0 0 8px rgba(139,92,246,0.18), 0 0 36px rgba(139,92,246,0.35);
+  box-shadow: 0 0 0 8px rgba(139, 92, 246, 0.18),
+              0 0 36px rgba(139, 92, 246, 0.35);
 }
 
 .login-avatar-emoji {
-  width: 90px; height: 90px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--purple-dark), var(--purple-main));
-  display: flex;
-  align-items: center;
+  width:           90px;
+  height:          90px;
+  border-radius:   50%;
+  background:      linear-gradient(135deg, var(--purple-dark), var(--purple-main));
+  display:         flex;
+  align-items:     center;
   justify-content: center;
-  font-size: 38px;
-  margin-bottom: 12px;
+  font-size:       38px;
+  margin-bottom:   12px;
 }
 
 .login-title {
-  font-size: 1.35rem;
+  font-size:   1.35rem;
   font-weight: 800;
-  text-align: center;
-  margin: 0 0 3px;
-  background: linear-gradient(135deg, var(--purple-main) 30%, #c084fc 100%);
+  text-align:  center;
+  margin:      0 0 3px;
+  background:  linear-gradient(135deg, var(--purple-main) 30%, #c084fc 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.login-subtitle { font-size: .7rem; color: var(--text-muted); text-align: center; }
+.login-subtitle {
+  font-size: .7rem;
+  color:     var(--text-muted);
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CAMPOS DO FORMULÁRIO
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Placeholder mais suave */
+div[data-testid="stTextInput"] input::placeholder {
+  color:   var(--text-muted) !important;
+  opacity: 0.7;
+}
+
+/* Selectbox de nível de inglês */
+div[data-testid="stSelectbox"] > div > div {
+  background:    var(--bg-input)   !important;
+  border:        1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-md)  !important;
+}
+
+/* Date input */
+div[data-testid="stDateInput"] input {
+  background:    var(--bg-input)    !important;
+  border:        1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-md)   !important;
+  color:         var(--text-primary) !important;
+}
+
+/* Rodapé de copyright */
+.login-footer {
+  text-align:  center;
+  font-size:   .6rem;
+  color:       var(--border-subtle);
+  margin-top:  14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤768px) ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  section[data-testid="stMain"] div[data-testid="stVerticalBlock"] {
+    max-width: 100% !important;
+    padding:   0 12px !important;
+  }
+
+  .login-card { padding: 22px 18px 16px; }
+
+  .login-av-photo,
+  .login-avatar,
+  .login-av-emoji,
+  .login-avatar-emoji {
+    width:  78px !important;
+    height: 78px !important;
+  }
+
+  .login-title    { font-size: 1.2rem; }
+  .login-subtitle { font-size: .65rem; }
+}
+
+/* ── Mobile pequeno (≤480px) ──────────────────────────────────── */
+@media (max-width: 480px) {
+  section[data-testid="stMain"] div[data-testid="stVerticalBlock"] {
+    padding: 0 8px !important;
+  }
+
+  .main .block-container {
+    padding-bottom: 80px !important;
+  }
+
+  .login-card {
+    padding:       16px 14px 14px;
+    border-radius: var(--radius-lg);
+  }
+
+  .login-av-photo,
+  .login-avatar,
+  .login-av-emoji,
+  .login-avatar-emoji {
+    width:  70px !important;
+    height: 70px !important;
+    font-size: 30px !important;
+  }
+
+  .login-title    { font-size: 1.1rem; }
+  .login-subtitle { font-size: .62rem; }
+
+  /* Botões de aba em full-width */
+  div[data-testid="stButton"] > button {
+    font-size: .8rem !important;
+    padding:   8px 4px !important;
+  }
+}
+
+/* ── Mobile extra pequeno (≤360px) ─────────────────────────────── */
+@media (max-width: 360px) {
+  section[data-testid="stMain"] div[data-testid="stVerticalBlock"] {
+    padding: 0 6px !important;
+  }
+
+  .login-title { font-size: 1rem; }
+
+  .login-av-photo,
+  .login-avatar,
+  .login-av-emoji,
+  .login-avatar-emoji {
+    width:  60px !important;
+    height: 60px !important;
+    font-size: 26px !important;
+  }
+}

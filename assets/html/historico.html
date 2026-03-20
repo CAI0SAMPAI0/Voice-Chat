@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History Template</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap');
+
+    :root {
+      --db-bg: #060a10;
+      --db-bg-card: #0d1420;
+      --db-border: #1a2535;
+      --db-text: #e6edf3;
+      --db-muted: #8b949e;
+      --ring-color: {{RING_COLOR}};
+      --ring-color-dim: {{RING_COLOR_DIM}};
+      --db-radius: 12px;
+      --db-transition: all 0.2s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--db-bg);
+      font-family: 'Sora', -apple-system, sans-serif;
+      color: var(--db-text);
+      overflow: visible;
+      padding: 1rem;
+    }
+
+    #hist-container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .hist-card {
+      background: var(--db-bg-card);
+      border: 1px solid var(--db-border);
+      border-radius: var(--db-radius);
+      overflow: hidden;
+      transition: var(--db-transition);
+    }
+
+    .hist-card-header {
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      position: relative;
+      user-select: none;
+    }
+
+    .hist-card-header:hover { background: rgba(255,255,255,0.02); }
+
+    .hist-expand-trigger {
+      font-size: 0.8rem;
+      color: var(--db-muted);
+      transition: var(--db-transition);
+      margin-right: 4px;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hist-expand-trigger:hover { background: rgba(255,255,255,0.06); color: var(--ring-color); }
+    .hist-card.open .hist-expand-trigger { transform: rotate(180deg); color: var(--ring-color); }
+
+    .hist-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(139, 92, 246, 0.1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8b5cf6;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .hist-info { flex: 1; min-width: 0; }
+    .hist-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hist-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.72rem;
+      color: var(--db-muted);
+    }
+
+    .hist-meta-item { display: flex; align-items: center; gap: 4px; }
+
+    .hist-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .hist-btn {
+      background: #111b2d;
+      border: 1px solid var(--db-border);
+      color: var(--db-text);
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--db-transition);
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .hist-btn:hover { background: var(--db-border); color: #fff; }
+    .hist-btn-del:hover { background: rgba(224,92,42,0.15); color: #ff7a5c; border-color: rgba(224,92,42,0.3); }
+    .hist-btn-open:hover { background: var(--ring-color-dim); color: var(--ring-color); border-color: var(--ring-color); }
+
+    /* Preview Bolhas */
+    .hist-details {
+      display: none;
+      padding: 1.25rem;
+      background: #090d18;
+      border-top: 1px solid var(--db-border);
+      animation: slideDown 0.2s ease forwards;
+    }
+
+    .hist-card.open .hist-details { display: block; }
+    .hist-card.open { border-color: var(--db-muted); }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-bubble-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 1rem;
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .chat-bubble {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .bubble-user {
+      align-self: flex-end;
+      background: {{USER_BUBBLE_COLOR}};
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble-bot {
+      align-self: flex-start;
+      background: {{BOT_BUBBLE_COLOR}};
+      color: var(--db-text);
+      border: 1px solid var(--db-border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .bubble-label {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--db-muted);
+    }
+    .bubble-user .bubble-label { text-align: right; color: rgba(255,255,255,0.7); }
+
+    .btn-audio {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--db-muted);
+      font-size: 0.65rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .btn-audio:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .btn-audio.playing { color: var(--ring-color); border-color: var(--ring-color); }
+
+    .hist-open-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--ring-color);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Sora', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 0.5rem;
+      transition: filter 0.15s;
+    }
+    .hist-open-btn:hover { filter: brightness(1.15); }
+
+    .no-msgs {
+      color: var(--db-muted);
+      font-size: 0.75rem;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .st-empty {
+      padding: 3rem 1rem;
+      text-align: center;
+      color: var(--db-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<div id="hist-container">
+  <!-- JS vai renderizar aqui -->
+</div>
+
+<script>
+(function() {
+  var CONVS     = {{CONVS_JSON}};
+  var PROF_NAME = "{{PROF_NAME}}";
+  var container = document.getElementById('hist-container');
+  var currentAudio = null;
+
+  if (!CONVS || CONVS.length === 0) {
+    container.innerHTML = '<div class="st-empty">💬 {{STR_HISTORY_EMPTY}}</div>';
+    updateFrameHeight();
+    return;
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderBubbles(msgs) {
+    if (!msgs || msgs.length === 0) {
+      return '<div class="no-msgs">Sem mensagens nesta conversa.</div>';
+    }
+    return msgs.map(function(m) {
+      var isBot  = m.role !== 'user';
+      var label  = isBot ? PROF_NAME : 'Você';
+      var cls    = isBot ? 'bubble-bot' : 'bubble-user';
+      var audio  = (isBot && m.tts_b64)
+        ? '<button class="btn-audio" onclick="playAudio(event, \'' + m.tts_b64 + '\', this)"><i class="fa-solid fa-volume-high"></i> Ouvir</button>'
+        : '';
+      return '<div class="chat-bubble ' + cls + '">'
+        + '<div class="bubble-label">' + esc(label) + '</div>'
+        + '<div>' + esc(m.content) + '</div>'
+        + audio
+        + '</div>';
+    }).join('');
+  }
+
+  function render() {
+    container.innerHTML = CONVS.map(function(c) {
+      var title = c.title || ('Conversa ' + (c.id || '').substring(0, 8));
+      var date  = c.formatted_date || '---';
+      var msgs  = c.msg_count || 0;
+      var bubblesHtml = renderBubbles(c.preview_msgs || []);
+
+      return '<div class="hist-card" id="card-' + esc(c.id) + '">'
+        + '<div class="hist-card-header" onclick="openConv(event, \'' + esc(c.id) + '\')">'
+          + '<div class="hist-icon"><i class="fa-solid fa-microphone"></i></div>'
+          + '<div class="hist-info">'
+            + '<div class="hist-title">' + esc(title) + '</div>'
+            + '<div class="hist-meta">'
+              + '<div class="hist-meta-item"><i class="fa-solid fa-calendar-days"></i> ' + esc(date) + '</div>'
+              + '<div class="hist-meta-item"><i class="fa-solid fa-message"></i> ' + msgs + ' msg' + (msgs !== 1 ? 's' : '') + '</div>'
+            + '</div>'
+          + '</div>'
+          + '<div class="hist-actions">'
+            + '<div class="hist-expand-trigger" onclick="toggleDetails(event, \'' + esc(c.id) + '\')" title="{{STR_PREVIEW}}">'
+              + '<i class="fa-solid fa-chevron-down"></i>'
+            + '</div>'
+            + '<button class="hist-btn hist-btn-open" title="{{STR_OPEN}}" onclick="openConv(event, \'' + esc(c.id) + '\')">'
+              + '<i class="fa-solid fa-play"></i>'
+            + '</button>'
+            + '<button class="hist-btn hist-btn-del" title="{{STR_DELETE}}" onclick="confirmDelete(event, \'' + esc(c.id) + '\')">'
+              + '<i class="fa-solid fa-trash-can"></i>'
+            + '</button>'
+          + '</div>'
+        + '</div>'
+        + '<div class="hist-details" id="details-' + esc(c.id) + '">'
+          + '<div class="chat-bubble-container">' + bubblesHtml + '</div>'
+          + '<button class="hist-open-btn" onclick="openConv(event, \'' + esc(c.id) + '\')">'
+            + '<i class="fa-solid fa-door-open"></i> {{STR_CONTINUE}}'
+          + '</button>'
+        + '</div>'
+      + '</div>';
+    }).join('');
+    updateFrameHeight();
+  }
+
+  window.toggleDetails = function(ev, id) {
+    if (ev) ev.stopPropagation();
+    var card = document.getElementById('card-' + id);
+    if (card) {
+      card.classList.toggle('open');
+      updateFrameHeight();
+    }
+  };
+
+  window.openConv = function(ev, id) {
+    if (ev) ev.stopPropagation();
+    notify('open_conv', id);
+  };
+
+  window.confirmDelete = function(ev, id) {
+    if (ev) ev.stopPropagation();
+    if (confirm('Tem certeza que deseja excluir esta conversa?')) {
+      notify('delete_conv', id);
+    }
+  };
+
+  window.playAudio = function(ev, b64, btn) {
+    if (ev) ev.stopPropagation();
+    if (currentAudio) {
+      currentAudio.pause();
+      document.querySelectorAll('.btn-audio').forEach(function(b) {
+        b.innerHTML = '<i class="fa-solid fa-volume-high"></i> Ouvir';
+        b.classList.remove('playing');
+      });
+      if (currentAudio._btn === btn) {
+        currentAudio = null;
+        return;
+      }
+    }
+
+    var audio    = new Audio('data:audio/mp3;base64,' + b64);
+    audio._btn   = btn;
+    btn.innerHTML = '<i class="fa-solid fa-stop"></i> Parar';
+    btn.classList.add('playing');
+
+    audio.onended = function() {
+      btn.innerHTML = '<i class="fa-solid fa-volume-high"></i> Ouvir';
+      btn.classList.remove('playing');
+      currentAudio = null;
+    };
+
+    audio.play().catch(function() {});
+    currentAudio = audio;
+  };
+
+  function notify(action, data) {
+    window.parent.postMessage({ action: action, data: data }, '*');
+  }
+
+  function updateFrameHeight() {
+    var h = document.documentElement.scrollHeight || document.body.scrollHeight;
+    window.parent.postMessage({ type: 'streamlit:setFrameHeight', value: h + 40 }, '*');
+  }
+
+  if (typeof MutationObserver !== 'undefined') {
+    var obs = new MutationObserver(updateFrameHeight);
+    obs.observe(document.body, { childList: true, subtree: true, attributes: false });
+  }
+
+  render();
+  [200, 600].forEach(function(t) { setTimeout(updateFrameHeight, t); });
+})();
+</script>
+</body>
+</html>

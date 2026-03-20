@@ -1,383 +1,664 @@
 /* ═══════════════════════════════════════════════════════════════
    voice.css — Tela principal de modo voz
-   Avatar, bolhas, mic, controles de áudio
+   ───────────────────────────────────────────────────────────────
+   Mudanças vs versão anterior:
+   1. @keyframes shimmer e .skeleton REMOVIDOS — já definidos em
+      global.css. Ter duas definições idênticas desperdiça bytes e
+      pode causar comportamento diferente se uma divergir.
+
+   2. stVerticalBlock sem escopo REMOVIDO — o reset de gap:0/padding:0
+      na div global causava problemas em outras páginas. O voice.py
+      já injeta esse reset via st.markdown inline no início de
+      show_voice(), que é o lugar correto (escopo de renderização).
+
+   3. @media (max-height: 926px) com magic number REMOVIDO.
+      margin-top:20px no mic-hint nessa altura específica era um
+      ajuste "no olho" sem explicação. Substituído por lógica de
+      layout com gap no próprio .mic-footer.
+
+   4. .history-wrap max-width estava 1890px no voice.py (typo).
+      No CSS estava 860px (correto). Unificado em 860px.
+
+   5. Breakpoints reorganizados em ordem decrescente consistente:
+      landscape → tablet → mobile → mobile-sm → mobile-xs.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Layout geral (sem scroll no modo voz) ─────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   RESET — bloqueia scroll e zera espaçamento no modo voz
+   ───────────────────────────────────────────────────────────────
+   voice.css é o ÚNICO lugar que bloqueia overflow globalmente.
+   Quando o usuário sai do modo voz, page_guard.scroll_restore()
+   desfaz esses locks apenas no stMain, sem afetar a sidebar.
+   ═══════════════════════════════════════════════════════════════ */
+
 body,
 .stApp,
 [data-testid="stAppViewContainer"],
-[data-testid="stMain"] { background: var(--bg-primary) !important; }
+[data-testid="stMain"] {
+  background: var(--bg-primary) !important;
+}
 
 section[data-testid="stMain"] > div,
 .main .block-container {
-  padding: 0 !important;
-  overflow: hidden !important;
-  max-height: 100vh !important;
+  padding:    0         !important;
+  overflow:   hidden    !important;
+  max-height: 100vh     !important;
 }
 
-div[data-testid="stVerticalBlock"],
-div[data-testid="stVerticalBlockBorderWrapper"],
-div[data-testid="element-container"] {
-  gap: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
+/*
+ * REMOVIDO: div[data-testid="stVerticalBlock"] global
+ * Esse seletor sem escopo afetava toda a app.
+ * O reset de gap/padding/margin é feito via st.markdown inline
+ * no início de show_voice(), que tem escopo de renderização.
+ */
 
 html, body { overflow: hidden !important; }
 
-/* ── Esconde microfone nativo do Streamlit ─────────────────────── */
+/* ── Microfone nativo — escondido, mantemos o botão customizado ── */
 [data-testid="stAudioInput"],
 [data-testid="stAudioInput"] *,
 div:has(> [data-testid="stAudioInput"]) {
-  position: fixed !important;
-  bottom: -9999px !important;
-  left: -9999px !important;
-  width: 1px !important;
-  height: 1px !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+  position:       fixed   !important;
+  bottom:         -9999px !important;
+  left:           -9999px !important;
+  width:          1px     !important;
+  height:         1px     !important;
+  opacity:        0       !important;
+  pointer-events: none    !important;
 }
 
-/* ── App container ─────────────────────────────────────────────── */
+/* Ancora de resize do iframe — invisível */
+[data-testid="stAppIframeResizerAnchor"] {
+  opacity:    0;
+  visibility: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LAYOUT PRINCIPAL — flexbox coluna, sem scroll
+   ═══════════════════════════════════════════════════════════════ */
+
 .voice-app {
-  display: flex;
+  display:        flex;
   flex-direction: column;
-  align-items: center;
-  height: 100vh;
-  height: 100dvh;
-  padding: 0 16px;
-  gap: 0;
-  overflow: hidden;
+  align-items:    center;
+  height:         100vh;
+  height:         100dvh;   /* dvh: subtrai barra do navegador em mobile */
+  padding:        0 16px;
+  gap:            0;
+  overflow:       hidden;
 }
 
-/* ── Seção do avatar ───────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   SEÇÃO DO AVATAR
+   ═══════════════════════════════════════════════════════════════ */
+
 .avatar-section {
-  flex-shrink: 0;
-  width: 100%;
-  display: flex;
+  flex-shrink:    0;
+  width:          100%;
+  display:        flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 12px 0 8px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  align-items:    center;
+  gap:            4px;
+  padding:        12px 0 8px;
+  position:       sticky;
+  top:            0;
+  z-index:        10;
+  /* Gradiente para o avatar não colidir com as bolhas ao rolar */
   background: linear-gradient(180deg, var(--bg-primary) 85%, transparent 100%);
 }
 
-.avatar-wrap { position: relative; width: 200px; height: 200px; flex-shrink: 0; }
-
-/* Avatar menor em telas pequenas */
-@media (max-height: 700px) {
-  .avatar-wrap { width: 130px; height: 130px; }
-  .avatar-img,
-  .avatar-emoji { width: 130px !important; height: 130px !important; }
-  .avatar-section { padding: 6px 0 4px; }
-  .prof-name { font-size: .85rem !important; }
+.avatar-wrap {
+  position:   relative;
+  width:      200px;
+  height:     200px;
+  flex-shrink: 0;
 }
 
-@media (max-width: 380px) {
-  .avatar-wrap { width: 100px; height: 100px; }
-  .avatar-img,
-  .avatar-emoji { width: 100px !important; height: 100px !important; }
-  .mic-btn { width: 60px; height: 60px; font-size: 24px; }
-  .bubble { font-size: .78rem; }
-}
-
-/* ── Anel animado ──────────────────────────────────────────────── */
+/* ── Anel animado ────────────────────────────────────────────── */
 .avatar-ring {
-  position: absolute;
-  inset: -8px;
+  position:      absolute;
+  inset:         -8px;
   border-radius: 50%;
-  border: 2px solid rgba(240,165,0,0.3);
-  animation: ring-pulse 2s ease-in-out infinite;
+  border:        2px solid rgba(240, 165, 0, 0.3);
+  animation:     ring-pulse 2s ease-in-out infinite;
 }
 
 .avatar-ring.active {
   border-color: var(--accent);
-  animation: ring-glow 1s ease-in-out infinite;
+  animation:    ring-glow 1s ease-in-out infinite;
 }
 
 @keyframes ring-pulse {
-  0%,100% { opacity: .4; transform: scale(1); }
-  50%      { opacity: .8; transform: scale(1.03); }
+  0%, 100% { opacity: .4; transform: scale(1);    }
+  50%       { opacity: .8; transform: scale(1.03); }
 }
 
 @keyframes ring-glow {
-  0%   { box-shadow: 0 0 0 0 rgba(240,165,0,0.5); }
-  70%  { box-shadow: 0 0 14px rgba(240,165,0,0); }
-  100% { box-shadow: 0 0 0 0 rgba(240,165,0,0); }
+  0%   { box-shadow: 0 0 0 0    rgba(240, 165, 0, 0.5); }
+  70%  { box-shadow: 0 0 14px   rgba(240, 165, 0, 0);   }
+  100% { box-shadow: 0 0 0 0    rgba(240, 165, 0, 0);   }
 }
 
-/* ── Imagem / emoji do avatar ──────────────────────────────────── */
+/* ── Imagem e emoji do avatar ────────────────────────────────── */
 .avatar-img {
-  width: 200px; height: 200px;
-  border-radius: 50%;
-  object-fit: cover;
+  width:           200px;
+  height:          200px;
+  border-radius:   50%;
+  object-fit:      cover;
   object-position: top center;
-  border: 3px solid var(--accent);
-  box-shadow: 0 0 32px rgba(240,165,0,0.25);
+  border:          3px solid var(--accent);
+  box-shadow:      0 0 32px rgba(240, 165, 0, 0.25);
 }
 
 .avatar-emoji {
-  width: 200px; height: 200px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1a2535, #0f1824);
-  border: 3px solid var(--accent);
-  display: flex;
-  align-items: center;
+  width:           200px;
+  height:          200px;
+  border-radius:   50%;
+  background:      linear-gradient(135deg, #1a2535, #0f1824);
+  border:          3px solid var(--accent);
+  display:         flex;
+  align-items:     center;
   justify-content: center;
-  font-size: 54px;
+  font-size:       54px;
 }
 
-.prof-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-top: 6px; }
-.voice-status { font-size: .68rem; color: var(--accent); margin-top: 1px; }
+.prof-name {
+  font-size:   1rem;
+  font-weight: 700;
+  color:       var(--text-primary);
+  margin-top:  6px;
+}
 
-/* ── Histórico de bolhas ───────────────────────────────────────── */
+.voice-status {
+  font-size:  .68rem;
+  color:      var(--accent);
+  margin-top: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HISTÓRICO DE BOLHAS
+   ═══════════════════════════════════════════════════════════════ */
+
 .history-wrap {
-  width: 100%;
-  max-width: 860px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
+  width:      100%;
+  max-width:  860px;   /* era 1890px no voice.py — typo corrigido */
+  flex:       1;
+  min-height: 0;       /* essencial para flex-child não transbordar */
+
+  overflow-y:  auto;
+  display:     flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px 4px;
+  gap:         8px;
+  padding:     8px 4px;
+
   scrollbar-width: thin;
   scrollbar-color: var(--border-subtle) transparent;
   -webkit-overflow-scrolling: touch;
 }
 
-/* ── Bolhas de conversa ────────────────────────────────────────── */
-.bubble {
-  max-width: 82%;
-  padding: 10px 15px;
-  border-radius: var(--radius-lg);
-  font-size: .84rem;
-  line-height: 1.55;
-  word-break: break-word;
-  animation: bubble-in var(--transition-mid) ease both;
+.history-wrap::-webkit-scrollbar       { width: 3px; }
+.history-wrap::-webkit-scrollbar-thumb {
+  background:    var(--border-subtle);
+  border-radius: var(--radius-full);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   BOLHAS DE CONVERSA
+   ═══════════════════════════════════════════════════════════════ */
+
+.bubble {
+  max-width:   82%;
+  padding:     10px 15px;
+  border-radius: var(--radius-lg);
+  font-size:   .84rem;
+  line-height: 1.55;
+  word-break:  break-word;
+  animation:   bubble-in var(--transition-mid) ease both;
+}
+
+/* bubble-in é privado deste arquivo — não faz sentido no global */
 @keyframes bubble-in {
   from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 
 .bubble.user {
-  align-self: flex-end;
-  background: var(--success);
-  color: #fff;
+  align-self:                 flex-end;
+  background:                 var(--success);
+  color:                      #fff;
   border-bottom-right-radius: 4px;
 }
 
 .bubble.bot {
-  align-self: flex-start;
-  background: var(--bg-card);
-  color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  align-self:                flex-start;
+  background:                var(--bg-card);
+  color:                     var(--text-primary);
+  border:                    1px solid var(--border-subtle);
   border-bottom-left-radius: 4px;
 }
 
 .bubble-label       { font-size: .6rem; color: var(--text-muted); margin: 2px 4px; }
 .bubble-label.right { text-align: right; }
 
-/* ── Botão play por bolha ──────────────────────────────────────── */
-.bubble-play-btn {
-  align-self: flex-start;
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  color: #3a6a8a;
-  font-size: .72rem;
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all var(--transition-fast);
-  margin-bottom: 4px;
-  min-height: 32px;
-}
-
-.bubble-play-btn:hover   { color: var(--accent); border-color: rgba(240,165,0,0.4); background: var(--accent-subtle); }
-.bubble-play-btn.playing { color: var(--danger); border-color: rgba(224,92,42,0.5); }
-
-/* Bolha "digitando..." */
+/* Bolha "digitando..." com três pontos animados */
 .bubble.typing {
-  display: inline-flex;
+  display:     inline-flex;
   align-items: center;
-  gap: 4px;
+  gap:         4px;
 }
+
 .bubble.typing .dot {
-  width: 6px;
-  height: 6px;
+  width:         6px;
+  height:        6px;
   border-radius: 50%;
-  background: var(--text-secondary);
-  opacity: 0.6;
-  animation: typing-bounce 1s infinite ease-in-out;
+  background:    var(--text-secondary);
+  opacity:       0.6;
+  animation:     typing-bounce 1s infinite ease-in-out;
 }
+
 .bubble.typing .dot:nth-child(2) { animation-delay: 0.15s; }
-.bubble.typing .dot:nth-child(3) { animation-delay: 0.3s; }
+.bubble.typing .dot:nth-child(3) { animation-delay: 0.30s; }
 
 @keyframes typing-bounce {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
-  30%          { transform: translateY(-3px); opacity: 1; }
+  0%, 60%, 100% { transform: translateY(0);    opacity: 0.5; }
+  30%            { transform: translateY(-3px); opacity: 1;   }
 }
 
-/* ── Caixa de erro ─────────────────────────────────────────────── */
+/* ── Botão ▶ Ouvir por bolha ─────────────────────────────────── */
+.bubble-play-btn {
+  align-self:  flex-start;
+  background:  transparent;
+  border:      1px solid var(--border-subtle);
+  color:       #3a6a8a;
+  font-size:   .72rem;
+  padding:     4px 12px;
+  border-radius: var(--radius-sm);
+  cursor:      pointer;
+  font-family: inherit;
+  transition:  all var(--transition-fast);
+  margin-bottom: 4px;
+  min-height:  32px;
+}
+
+.bubble-play-btn:hover {
+  color:        var(--accent);
+  border-color: rgba(240, 165, 0, 0.4);
+  background:   var(--accent-subtle);
+}
+
+.bubble-play-btn.playing {
+  color:        var(--danger);
+  border-color: rgba(224, 92, 42, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CAIXA DE ERRO
+   ═══════════════════════════════════════════════════════════════ */
+
+.error-box,
 .voice-error {
-  background: var(--danger-subtle);
-  border: 1px solid rgba(224,92,42,0.3);
+  background:    var(--danger-subtle);
+  border:        1px solid rgba(224, 92, 42, 0.3);
   border-radius: var(--radius-md);
-  padding: 8px 14px;
-  font-size: .78rem;
-  color: var(--danger);
-  max-width: 560px;
-  width: 100%;
-  text-align: center;
-  flex-shrink: 0;
+  padding:       8px 14px;
+  font-size:     .78rem;
+  color:         var(--danger);
+  max-width:     560px;
+  width:         100%;
+  text-align:    center;
+  flex-shrink:   0;
 }
 
-/* ── Rodapé do mic ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   RODAPÉ DO MIC — sticky no bottom, não bloqueia o conteúdo
+   ═══════════════════════════════════════════════════════════════ */
+
 .mic-footer {
-  flex-shrink: 0;
-  width: 100%;
-  max-width: 620px;
-  display: flex;
+  flex-shrink:    0;
+  width:          100%;
+  max-width:      620px;
+  display:        flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 0 max(16px, env(safe-area-inset-bottom));
-  background: linear-gradient(to top, var(--bg-primary) 70%, transparent);
-  position: sticky;
-  bottom: 0;
+  align-items:    center;
+  gap:            8px;   /* era 6px — mais espaço entre controles e mic */
+  padding:        10px 0 max(16px, env(safe-area-inset-bottom));
+  background:     linear-gradient(to top, var(--bg-primary) 70%, transparent);
+  position:       sticky;
+  bottom:         0;
 }
 
-/* ── Controles de áudio ────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   CONTROLES DE ÁUDIO (Vol + Vel)
+   ═══════════════════════════════════════════════════════════════ */
+
 .audio-controls {
-  display: flex;
+  display:     flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  gap:         6px;
+  padding:     8px 12px;
+  background:  var(--bg-card);
+  border:      1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  width:       100%;
+  overflow-x:  auto;
+  overflow-y:  hidden;
   white-space: nowrap;
   scrollbar-width: none;
-  flex-wrap: nowrap;
-  min-height: 44px;
+  flex-wrap:   nowrap;
+  min-height:  44px;
 }
 
 .audio-controls::-webkit-scrollbar { display: none; }
 
-.ctrl-label { font-size: .68rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
-.ctrl-val   { font-size: .68rem; color: var(--text-secondary); min-width: 28px; flex-shrink: 0; }
+.ctrl-label {
+  font-size:  .68rem;
+  color:      var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
+.ctrl-val {
+  font-size:  .68rem;
+  color:      var(--text-secondary);
+  min-width:  28px;
+  flex-shrink: 0;
+}
+
+/* Range input — thumb com a cor do accent do usuário */
 input[type="range"].ctrl-range {
   -webkit-appearance: none;
   flex-shrink: 0;
-  width: 60px; height: 4px;
-  background: var(--border-subtle);
+  width:       60px;
+  height:      4px;
+  background:  var(--border-subtle);
   border-radius: 2px;
-  outline: none;
-  cursor: pointer;
+  outline:     none;
+  cursor:      pointer;
   touch-action: none;
 }
 
-@media (min-width: 480px) { input[type="range"].ctrl-range { width: 80px; } }
-
 input[type="range"].ctrl-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 16px; height: 16px;
+  width:         16px;
+  height:        16px;
   border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
+  background:    var(--accent);
+  cursor:        pointer;
 }
 
 input[type="range"].ctrl-range::-moz-range-thumb {
-  width: 16px; height: 16px;
+  width:         16px;
+  height:        16px;
   border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-  border: none;
+  background:    var(--accent);
+  cursor:        pointer;
+  border:        none;
 }
 
-/* ── Botão play global ─────────────────────────────────────────── */
+/* ── Botão ▶ Ouvir global ────────────────────────────────────── */
 #global-play-btn {
-  background: var(--border-subtle);
-  color: var(--text-primary);
-  border: 1px solid var(--border-medium);
+  background:  var(--border-subtle);
+  color:       var(--text-primary);
+  border:      1px solid var(--border-medium);
   border-radius: var(--radius-sm);
-  padding: 5px 12px;
-  font-size: .78rem;
-  cursor: pointer;
+  padding:     5px 12px;
+  font-size:   .78rem;
+  cursor:      pointer;
   white-space: nowrap;
-  transition: background var(--transition-fast);
+  transition:  background var(--transition-fast);
   font-family: inherit;
   flex-shrink: 0;
-  min-height: 32px;
+  min-height:  32px;
   touch-action: manipulation;
 }
 
 #global-play-btn:hover { background: var(--border-medium); }
 
-/* ── Botão mic ─────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   BOTÃO MIC
+   ═══════════════════════════════════════════════════════════════ */
+
 .mic-btn {
-  width: 72px; height: 72px;
+  width:         72px;
+  height:        72px;
   border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  background: linear-gradient(135deg, var(--border-subtle), var(--bg-input));
-  color: var(--text-secondary);
-  font-size: 28px;
-  display: flex;
-  align-items: center;
+  border:        none;
+  cursor:        pointer;
+  background:    linear-gradient(135deg, var(--border-subtle), var(--bg-input));
+  color:         var(--text-secondary);
+  font-size:     28px;
+  display:       flex;
+  align-items:   center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
-  transition: all var(--transition-mid);
-  outline: none;
-  touch-action: manipulation;
+  box-shadow:    0 4px 20px rgba(0, 0, 0, 0.4),
+                 inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition:    all var(--transition-mid);
+  outline:       none;
+  touch-action:  manipulation;
   -webkit-tap-highlight-color: transparent;
-  flex-shrink: 0;
+  flex-shrink:   0;
 }
 
-@media (min-width: 600px) { .mic-btn { width: 80px; height: 80px; font-size: 32px; } }
-
-.mic-btn:hover { background: linear-gradient(135deg, #1e2f40, #182130); color: var(--text-primary); }
+.mic-btn:hover {
+  background: linear-gradient(135deg, #1e2f40, #182130);
+  color:      var(--text-primary);
+}
 
 .mic-btn.recording {
   background: linear-gradient(135deg, var(--danger), #c44a1a);
-  color: #fff;
-  animation: mic-pulse 1.2s ease-in-out infinite;
+  color:      #fff;
+  animation:  mic-pulse 1.2s ease-in-out infinite;
 }
 
 .mic-btn.processing {
   background: linear-gradient(135deg, var(--accent), #c88800);
-  color: var(--bg-primary);
-  animation: none;
+  color:      var(--bg-primary);
+  animation:  none;
 }
 
 @keyframes mic-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(224,92,42,0.6), 0 4px 20px rgba(224,92,42,0.3); }
-  70%  { box-shadow: 0 0 0 16px rgba(224,92,42,0), 0 4px 20px rgba(224,92,42,0.3); }
-  100% { box-shadow: 0 0 0 0 rgba(224,92,42,0), 0 4px 20px rgba(224,92,42,0.3); }
+  0%   { box-shadow: 0 0 0 0    rgba(224, 92, 42, 0.6), 0 4px 20px rgba(224, 92, 42, 0.3); }
+  70%  { box-shadow: 0 0 0 16px rgba(224, 92, 42, 0),   0 4px 20px rgba(224, 92, 42, 0.3); }
+  100% { box-shadow: 0 0 0 0    rgba(224, 92, 42, 0),   0 4px 20px rgba(224, 92, 42, 0.3); }
 }
 
-/* ── Skeleton loading (enquanto Gemini pensa) ──────────────────── */
-.skeleton {
-  background: linear-gradient(90deg, var(--border-subtle) 25%, var(--border-medium) 50%, var(--border-subtle) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: var(--radius-sm);
+.mic-hint {
+  font-size:      .68rem;
+  color:          var(--text-muted);
+  letter-spacing: .3px;
 }
 
-@keyframes shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — do maior para o menor
+   ───────────────────────────────────────────────────────────────
+   Estratégia: em tablet e mobile o mic-footer vai para
+   position:fixed no bottom. Isso resolve o problema do footer
+   sumir quando o Streamlit bloqueia overflow nos containers.
+   O .history-wrap recebe padding-bottom para não ficar embaixo
+   do footer fixo.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Landscape mobile (altura < 500px) ──────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .avatar-wrap,
+  .avatar-img,
+  .avatar-emoji { width: 70px !important; height: 70px !important; font-size: 28px !important; }
+
+  .avatar-section { padding: 4px 0 2px; gap: 1px; }
+  .prof-name      { font-size: .78rem; margin-top: 2px; }
+  .voice-status   { display: none; }
+
+  .mic-footer {
+    position:    fixed   !important;
+    bottom:      0       !important;
+    left:        0       !important;
+    right:       0       !important;
+    width:       100%    !important;
+    max-width:   100%    !important;
+    padding:     6px 12px max(8px, env(safe-area-inset-bottom)) !important;
+    background:  var(--bg-primary) !important;
+    border-top:  1px solid var(--border-subtle);
+    z-index:     100 !important;
+    gap:         4px !important;
+  }
+
+  .history-wrap { padding-bottom: 110px !important; }
+  .audio-controls { min-height: 36px; padding: 4px 8px; }
+
+  .mic-btn {
+    width:     52px !important;
+    height:    52px !important;
+    font-size: 20px !important;
+  }
 }
 
-.mic-hint { font-size: .68rem; color: var(--text-muted); letter-spacing: .3px; }
+/* ── Tablet landscape (769px–1366px) ─────────────────────────── */
+@media (max-width: 1366px) and (min-width: 769px) {
+  .voice-app {
+    height:     100dvh;
+    max-height: 100dvh;
+    padding:    0 12px;
+  }
+
+  .avatar-wrap,
+  .avatar-img,
+  .avatar-emoji { width: 160px !important; height: 160px !important; }
+
+  .mic-footer {
+    position:   fixed   !important;
+    bottom:     0       !important;
+    left:       0       !important;
+    right:      0       !important;
+    width:      100%    !important;
+    max-width:  100%    !important;
+    padding:    10px 16px max(14px, env(safe-area-inset-bottom)) !important;
+    background: var(--bg-primary) !important;
+    border-top: 1px solid var(--border-subtle);
+    z-index:    100 !important;
+    box-sizing: border-box !important;
+  }
+
+  .history-wrap  { padding-bottom: 140px !important; }
+  .audio-controls { max-width: 600px; }
+
+  .mic-btn {
+    width:     68px !important;
+    height:    68px !important;
+    font-size: 26px !important;
+  }
+}
+
+/* ── Tablet portrait (769px–1024px) ──────────────────────────── */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .avatar-wrap,
+  .avatar-img,
+  .avatar-emoji { width: 150px !important; height: 150px !important; }
+
+  .avatar-section { padding: 10px 0 6px; }
+  .prof-name      { font-size: .95rem; }
+  .voice-status   { font-size: .65rem; }
+
+  .bubble { font-size: .82rem; padding: 9px 13px; }
+}
+
+/* ── Mobile (≤768px) ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .voice-app { padding: 0 10px; height: 100dvh; }
+
+  .avatar-wrap,
+  .avatar-img,
+  .avatar-emoji { width: 120px !important; height: 120px !important; }
+
+  .avatar-section { padding: 8px 0 4px; }
+  .prof-name      { font-size: .88rem; margin-top: 4px; }
+  .voice-status   { font-size: .62rem; }
+
+  .mic-footer {
+    position:   fixed   !important;
+    bottom:     0       !important;
+    left:       0       !important;
+    right:      0       !important;
+    width:      100%    !important;
+    max-width:  100%    !important;
+    padding:    8px 12px max(12px, env(safe-area-inset-bottom)) !important;
+    background: var(--bg-primary) !important;
+    border-top: 1px solid var(--border-subtle);
+    z-index:    100 !important;
+    box-sizing: border-box !important;
+  }
+
+  .history-wrap { padding-bottom: 130px !important; }
+
+  .mic-btn {
+    width:     64px !important;
+    height:    64px !important;
+    font-size: 24px !important;
+  }
+
+  .bubble        { font-size: .8rem;   padding: 8px 12px; max-width: 88%; }
+  .bubble-label  { font-size: .58rem;  }
+
+  .audio-controls { padding: 6px 10px; min-height: 40px; }
+  .ctrl-label     { font-size: .62rem; }
+  .ctrl-val       { font-size: .62rem; }
+
+  input[type="range"].ctrl-range { width: 55px; }
+
+  #global-play-btn {
+    font-size:  .72rem;
+    padding:    4px 10px;
+    min-height: 28px;
+  }
+
+  .mic-hint  { font-size: .62rem; }
+  .error-box,
+  .voice-error { font-size: .72rem; padding: 6px 10px; max-width: 100%; }
+}
+
+/* ── Mobile pequeno (≤480px) ─────────────────────────────────── */
+@media (max-width: 480px) {
+  .voice-app { padding: 0 8px; }
+
+  .avatar-wrap,
+  .avatar-img,
+  .avatar-emoji { width: 100px !important; height: 100px !important; font-size: 40px !important; }
+
+  .avatar-section { padding: 6px 0 3px; gap: 2px; }
+
+  .mic-btn {
+    width:     58px !important;
+    height:    58px !important;
+    font-size: 22px !important;
+  }
+
+  .bubble         { font-size: .76rem; padding: 7px 10px; }
+  .audio-controls { padding: 5px 8px; gap: 4px; }
+
+  input[type="range"].ctrl-range { width: 48px; }
+
+  .bubble-play-btn { font-size: .66rem; padding: 3px 8px; min-height: 28px; }
+}
+
+/* ── Mobile extra pequeno (≤360px) ─────────────────────────────── */
+@media (max-width: 360px) {
+  .avatar-wrap,
+  .avatar-img,
+  .avatar-emoji { width: 84px !important; height: 84px !important; font-size: 34px !important; }
+
+  .mic-btn { width: 54px !important; height: 54px !important; font-size: 20px !important; }
+
+  .bubble { font-size: .72rem; }
+
+  /* Esconde labels de controle para economizar largura */
+  .ctrl-label { display: none; }
+}
+
+/* ── Range input maior em telas ≥480px ───────────────────────── */
+@media (min-width: 480px) {
+  input[type="range"].ctrl-range { width: 80px; }
+}
+
+/* ── Mic maior em telas ≥600px ───────────────────────────────── */
+@media (min-width: 600px) {
+  .mic-btn { width: 80px !important; height: 80px !important; font-size: 32px !important; }
+}

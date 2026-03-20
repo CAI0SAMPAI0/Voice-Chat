@@ -1,0 +1,773 @@
+.db-dashboard-root { overflow-x: hidden; width: 100%; }
+/* ═══════════════════════════════════════════════════════════════════════════
+   1️⃣ VARIÁVEIS PEDAGÓGICAS (adicione à seção :root existente)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Status e Alertas ── */
+  --db-status-critical: #e05c2a;
+  /* Vermelho: sem atividade 3+ dias */
+  --db-status-warning: #f0a500;
+  /* Amarelo: atividade em queda */
+  --db-status-healthy: #4ade80;
+  /* Verde: engajamento bom */
+
+  --db-status-critical-bg: rgba(224, 92, 42, 0.1);
+  --db-status-warning-bg: rgba(240, 165, 0, 0.1);
+  --db-status-healthy-bg: rgba(74, 222, 128, 0.1);
+
+  /* ── AI Insights ── */
+  --db-insight-bg: #0f1824;
+  /* Fundo do card de insight */
+  --db-insight-border: #8b5cf6;
+  /* Roxo: IA */
+  --db-insight-text: #c084fc;
+  /* Texto roxo claro */
+
+  /* ── Erros Recorrentes ── */
+  --db-error-tag-bg: rgba(224, 92, 42, 0.15);
+  --db-error-tag-text: #ff7a5c;
+
+  /* ── Gráfico de Engajamento ── */
+  --db-chart-height: 150px;
+  --db-chart-color: #8b5cf6;
+
+  /* ── Goals/Missões ── */
+  --db-goal-bg: rgba(74, 222, 128, 0.1);
+  --db-goal-border: #4ade80;
+  --db-goal-text: #4ade80;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2️⃣ STATUS BADGE — Indicador de Saúde (CRÍTICO / AVISO / SAUDÁVEL)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.db-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+}
+
+.db-status-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Status: CRÍTICO (sem atividade 3+ dias) */
+.db-status-critical {
+  background: var(--db-status-critical-bg);
+  color: var(--db-status-critical);
+  border: 1px solid var(--db-status-critical);
+}
+
+.db-status-critical::before {
+  background: var(--db-status-critical);
+}
+
+/* Status: AVISO (atividade em queda) */
+.db-status-warning {
+  background: var(--db-status-warning-bg);
+  color: var(--db-status-warning);
+  border: 1px solid var(--db-status-warning);
+}
+
+.db-status-warning::before {
+  background: var(--db-status-warning);
+}
+
+/* Status: SAUDÁVEL (engajamento bom) */
+.db-status-healthy {
+  background: var(--db-status-healthy-bg);
+  color: var(--db-status-healthy);
+  border: 1px solid var(--db-status-healthy);
+}
+
+.db-status-healthy::before {
+  background: var(--db-status-healthy);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3️⃣ AI INSIGHT CARD — Resumo Pedagógico Gerado pela IA
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.db-ai-insight {
+  margin-top: 1.2rem;
+  padding: 1rem;
+  background: var(--db-insight-bg);
+  border: 1px solid var(--db-insight-border);
+  border-left: 3px solid var(--db-insight-border);
+  border-radius: 10px;
+  animation: slideInLeft 0.4s ease forwards;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.db-ai-insight-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--db-insight-text);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+}
+
+.db-ai-insight-label::before {
+  content: '✨';
+  font-size: 1rem;
+}
+
+.db-ai-insight-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #c084fc;
+  margin: 0;
+  font-style: italic;
+}
+
+.db-ai-insight-loading {
+  color: #8b949e;
+  font-style: normal;
+  animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4️⃣ ERROS RECORRENTES — Nuvem de Tags dos Erros Mais Comuns
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.db-common-errors {
+  margin-top: 1.2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--db-border-subtle);
+}
+
+.db-errors-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--db-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.db-errors-title::before {
+  content: '⚠️';
+  font-size: 0.9rem;
+}
+
+.db-error-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.db-error-tag {
+  padding: 4px 10px;
+  background: var(--db-error-tag-bg);
+  border: 1px solid var(--db-error-tag-text);
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--db-error-tag-text);
+  transition: all 0.2s ease;
+}
+
+.db-error-tag:hover {
+  background: var(--db-error-tag-text);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(255, 122, 92, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   5️⃣ GRÁFICO DE ENGAJAMENTO — Sparkline Visual da Última Semana
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.db-engagement-chart {
+  margin-top: 1.2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--db-border-subtle);
+}
+
+.db-chart-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--db-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.db-chart-title::before {
+  content: '📈';
+  font-size: 0.9rem;
+}
+
+.db-chart-container {
+  height: var(--db-chart-height);
+  background: #070c15;
+  border: 1px solid var(--db-border-subtle);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.db-chart-bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--db-chart-color), rgba(139, 92, 246, 0.3));
+  border-radius: 4px 4px 0 0;
+  min-height: 10px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.db-chart-bar:hover {
+  background: linear-gradient(180deg, #c084fc, rgba(192, 132, 252, 0.4));
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+}
+
+.db-chart-bar-label {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  color: #4a5a6a;
+  white-space: nowrap;
+}
+
+.db-chart-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  color: #4a5a6a;
+  margin-top: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   6️⃣ GOALS / MISSÕES — Campo para Definir Tópico da Semana
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.db-goal-card {
+  margin-top: 1.2rem;
+  padding: 1rem;
+  background: #070c15;
+  border: 2px solid var(--db-goal-border);
+  border-radius: 10px;
+  animation: slideInUp 0.4s ease forwards;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.db-goal-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--db-goal-text);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+}
+
+.db-goal-label::before {
+  content: '🎯';
+  font-size: 1rem;
+}
+
+.db-goal-text {
+  font-size: 0.85rem;
+  color: var(--db-goal-text);
+  font-weight: 600;
+  font-style: italic;
+  margin: 0;
+}
+
+.db-goal-empty {
+  font-size: 0.8rem;
+  color: #4a5a6a;
+  font-style: normal;
+}
+
+.db-goal-button {
+  background: transparent;
+  border: 1px solid var(--db-goal-border);
+  color: var(--db-goal-text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.db-goal-button:hover {
+  background: rgba(74, 222, 128, 0.1);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7️⃣ PAINEL GLOBAL DE INSIGHTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.db-global-insights {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--db-bg-card);
+  border: 1px solid var(--db-border-subtle);
+  border-radius: 14px;
+  animation: fadeIn 0.4s ease;
+}
+
+.db-global-insights-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--db-text-primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.db-global-insights-title::before {
+  content: '🔍';
+  font-size: 1.2rem;
+}
+
+.db-global-errors-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #c084fc;
+  margin-bottom: 0.8rem;
+}
+
+.db-global-error-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.db-global-error-item {
+  padding: 6px 14px;
+  background: var(--db-error-tag-bg);
+  border: 1px solid var(--db-error-tag-text);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--db-error-tag-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.db-global-error-count {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.db-global-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.db-global-stat {
+  padding: 0.8rem;
+  background: #0a0e18;
+  border: 1px solid var(--db-border-subtle);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.db-global-stat-label {
+  font-size: 0.7rem;
+  color: #4a5a6a;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.db-global-stat-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--db-text-metric);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   8️⃣ INDICADOR DE URGÊNCIA (Borda do Student Item)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.db-student-item.db-urgent {
+  border-left: 4px solid var(--db-status-critical);
+  box-shadow: inset 0 0 0 1px var(--db-status-critical-bg);
+}
+
+.db-student-item.db-warning {
+  border-left: 4px solid var(--db-status-warning);
+  box-shadow: inset 0 0 0 1px var(--db-status-warning-bg);
+}
+
+.db-student-item.db-healthy {
+  border-left: 4px solid var(--db-status-healthy);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   9️⃣ TOOLTIP PEDAGÓGICO — Hint para o Professor
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.db-pedagogical-hint {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px dashed #8b5cf6;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: #8b949e;
+  line-height: 1.4;
+}
+
+.db-pedagogical-hint-icon {
+  margin-right: 4px;
+  font-size: 0.9rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔟 AÇÃO RÁPIDA — Botões para Intervir Diretamente
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.db-quick-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.db-action-button {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--db-border-subtle);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #8b949e;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.db-action-button:hover {
+  border-color: #8b5cf6;
+  color: #c084fc;
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.db-action-button.send-message {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.db-action-button.send-message:hover {
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.db-action-button.set-goal {
+  border-color: var(--db-text-metric);
+  color: var(--db-text-metric);
+}
+
+.db-action-button.set-goal:hover {
+  background: rgba(240, 165, 0, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE — Mobile first
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤1024px) ────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .db-global-insights {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .db-global-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .db-ai-insight {
+    padding: 0.9rem;
+  }
+
+  .db-quick-actions {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .db-action-button {
+    flex: 1;
+    min-width: 120px;
+    font-size: 0.75rem;
+    padding: 0.5rem 0.8rem;
+  }
+}
+
+/* ── Mobile (≤768px) ─────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .db-ai-insight,
+  .db-engagement-chart,
+  .db-goal-card {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .db-ai-insight-label {
+    font-size: 0.62rem;
+  }
+
+  .db-ai-insight-text {
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  .db-error-tags {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .db-error-tag {
+    padding: 3px 8px;
+    font-size: 0.65rem;
+  }
+
+  .db-chart-container {
+    height: 90px;
+  }
+
+  .db-quick-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .db-action-button {
+    width: 100%;
+    font-size: 0.78rem;
+    padding: 0.6rem 1rem;
+    justify-content: center;
+  }
+
+  .db-global-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+    padding: 0.75rem;
+  }
+
+  .db-global-stat-value {
+    font-size: 1.2rem;
+  }
+
+  .db-global-stat-label {
+    font-size: 0.65rem;
+  }
+
+  .db-student-meta-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Expanders no mobile */
+  [data-testid="stExpander"] {
+    margin-left: 1% !important;
+    margin-right: 1% !important;
+  }
+
+  div[class="m-grid"] {
+    margin-left: 1%;
+    margin-right: 1%;
+    margin-top: 12px;
+  }
+
+  .section-tip {
+    margin: 0.4rem 1%;
+    font-size: 0.7rem;
+  }
+}
+
+/* ── Mobile pequeno (≤480px) ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .db-ai-insight-text {
+    font-size: 0.78rem;
+  }
+
+  .db-global-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .db-error-tag {
+    font-size: 0.6rem;
+    padding: 3px 6px;
+  }
+
+  .db-global-insights {
+    padding: 0.75rem;
+  }
+
+  #dashboard-pedagogico {
+    font-size: 1.3rem;
+    margin-top: 12px;
+  }
+
+  [data-testid="stExpander"] {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  div[class="m-grid"],
+  #dashboard-pedagogico {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+/* ── Mobile extra pequeno (≤360px) ─────────────────────────────────────── */
+@media (max-width: 360px) {
+  .db-global-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .db-global-stat-value {
+    font-size: 1rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMAÇÕES EXTRAS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes alertPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 92, 42, 0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(224, 92, 42, 0); }
+}
+
+.db-student-item.db-urgent {
+  animation: alertPulse 3s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESPAÇAMENTOS ORIGINAIS (mantidos)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+div[class="db-global-stat"] {
+  margin-bottom: 20px;
+  margin-top: 31px;
+}
+
+
+
+/* Título principal do dashboard pedagógico */
+.db-page-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  font-family: 'Sora', sans-serif;
+  margin: 0 0 1rem;
+}
+
+.m-grid {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+[data-testid="stExpander"] {
+  margin: 0;
+  width: 100%;
+}
+
+.section-tip {
+  color: #4a5a6a;
+  font-size: .75rem;
+  margin: 0.5rem 0;
+  text-align: left;
+}
